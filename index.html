@@ -59,6 +59,62 @@
             cursor: pointer;
         }
         
+        /* Map rotation container */
+        .leaflet-container {
+            transition: none !important;
+        }
+        
+        /* Compass controls */
+        .compass-controls {
+            position: fixed;
+            bottom: 140px;
+            right: 16px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .compass-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: rgba(26, 26, 26, 0.95);
+            border: 2px solid var(--tesla-light-gray);
+            color: var(--tesla-text);
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
+            position: relative;
+        }
+        
+        .compass-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .compass-btn.active {
+            background: var(--tesla-blue);
+            border-color: var(--tesla-blue);
+            color: white;
+            box-shadow: 0 0 20px rgba(62, 106, 225, 0.6);
+        }
+        
+        .compass-btn .icon {
+            transition: transform 0.1s ease;
+        }
+        
+        .compass-direction {
+            position: absolute;
+            top: -20px;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--tesla-blue);
+        }
+        
         .control-panel { 
             position: fixed; 
             left: 12px;
@@ -80,6 +136,32 @@
             border: 1px solid var(--tesla-light-gray); 
             margin-bottom: 6px;
             backdrop-filter: blur(10px);
+        }
+        
+        .search-mode {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 8px;
+            padding: 4px;
+            background: var(--tesla-gray);
+            border-radius: 6px;
+        }
+        
+        .mode-btn {
+            flex: 1;
+            padding: 6px;
+            border: none;
+            background: transparent;
+            color: var(--tesla-text-dim);
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .mode-btn.active {
+            background: var(--tesla-blue);
+            color: white;
         }
         
         .input-row {
@@ -123,9 +205,6 @@
         .traffic-label {
             font-size: 12px;
             color: var(--tesla-text-dim);
-            display: flex;
-            align-items: center;
-            gap: 6px;
         }
         
         .traffic-buttons {
@@ -199,29 +278,86 @@
         .btn-primary { background: var(--tesla-blue); color: var(--tesla-white); }
         .btn-secondary { background: var(--tesla-gray); color: var(--tesla-text); border: 1px solid var(--tesla-light-gray); }
         
-        .route-info {
-            position: fixed; 
-            top: 80px; 
-            right: 12px; 
-            background: rgba(26, 26, 26, 0.95);
-            border: 1px solid var(--tesla-light-gray); 
-            border-radius: 10px; 
-            padding: 12px; 
-            z-index: 1000; 
-            min-width: 160px;
+        .turn-instruction {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(26, 26, 26, 0.98);
+            border: 2px solid var(--tesla-blue);
+            border-radius: 16px;
+            padding: 20px 24px;
+            z-index: 2000;
+            min-width: 300px;
+            max-width: 90vw;
             backdrop-filter: blur(10px);
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-        .route-info.hidden-ui {
-            opacity: 0;
-            transform: translateX(20px);
-            pointer-events: none;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
         }
         
-        .route-stat { display: flex; justify-content: space-between; margin-bottom: 6px; align-items: baseline; }
-        .route-stat .label { font-size: 11px; color: var(--tesla-text-dim); }
-        .route-stat .value { font-size: 15px; font-weight: 700; color: var(--tesla-blue); }
-        .route-stat .value-small { font-size: 11px; color: var(--tesla-text-dim); text-decoration: line-through; margin-left: 6px; }
+        .turn-instruction .icon {
+            font-size: 48px;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+        
+        .turn-instruction .distance {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--tesla-blue);
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        
+        .turn-instruction .text {
+            font-size: 16px;
+            color: var(--tesla-text);
+            text-align: center;
+            line-height: 1.4;
+        }
+        
+        .turn-instruction .street {
+            font-size: 14px;
+            color: var(--tesla-text-dim);
+            text-align: center;
+            margin-top: 8px;
+            font-style: italic;
+        }
+        
+        .route-info {
+            position: fixed; 
+            bottom: 20px; 
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(26, 26, 26, 0.95);
+            border: 1px solid var(--tesla-light-gray); 
+            border-radius: 16px; 
+            padding: 16px 24px; 
+            z-index: 1000; 
+            backdrop-filter: blur(10px);
+            display: flex;
+            gap: 24px;
+            align-items: center;
+        }
+        
+        .route-stat-compact { 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .route-stat-compact .label { font-size: 10px; color: var(--tesla-text-dim); text-transform: uppercase; }
+        .route-stat-compact .value { font-size: 18px; font-weight: 700; color: var(--tesla-blue); }
+        
+        .stop-nav-btn {
+            background: #e31937;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+        }
         
         .notification {
             position: fixed; 
@@ -242,39 +378,6 @@
         
         .hidden { display: none !important; }
         
-        .driving-mode {
-            position: fixed;
-            bottom: 20px;
-            right: 12px;
-            background: rgba(33, 150, 243, 0.95);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 600;
-            z-index: 1000;
-            backdrop-filter: blur(10px);
-        }
-        
-        .ui-hint {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(26, 26, 26, 0.8);
-            color: var(--tesla-text-dim);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 11px;
-            z-index: 999;
-            backdrop-filter: blur(10px);
-            transition: opacity 0.3s ease;
-            pointer-events: none;
-        }
-        .ui-hint.hidden-ui {
-            opacity: 0;
-        }
-        
         .leaflet-routing-container { display: none; }
         .leaflet-control-zoom a { background: var(--tesla-gray) !important; color: var(--tesla-text) !important; border: 1px solid var(--tesla-light-gray) !important; }
     </style>
@@ -282,20 +385,57 @@
 <body>
     <div class="header">
         <div class="logo">🚗 TESLA</div>
-        <div class="data-badge">🚦 TRAFFIC MODE</div>
+        <div class="data-badge">🧭 COMPASS NAV</div>
         <div style="display: flex; align-items: center;">
             <span id="speed" class="speed">0</span>
-            <span id="location" class="status">GPS...</span>
+            <span id="location" class="status">Getting GPS...</span>
         </div>
     </div>
     <div id="map"></div>
-    <div id="drivingMode" class="driving-mode hidden">🧭 DRIVING</div>
-    <div id="uiHint" class="ui-hint">Touch map to show controls</div>
+    
+    <!-- Compass controls -->
+    <div class="compass-controls">
+        <div class="compass-btn" id="compassBtn" title="Toggle heading mode">
+            <div class="compass-direction" id="compassDirection">N</div>
+            <div class="icon" id="compassIcon">🧭</div>
+        </div>
+        <div class="compass-btn" id="northBtn" title="Reset to North">
+            <div class="icon">⬆️</div>
+        </div>
+    </div>
+    
+    <div id="turnInstruction" class="turn-instruction hidden">
+        <div class="icon" id="turnIcon">↑</div>
+        <div class="distance" id="turnDistance">500 m</div>
+        <div class="text" id="turnText">Continue straight</div>
+        <div class="street" id="turnStreet"></div>
+    </div>
+    
+    <div id="navBar" class="route-info hidden">
+        <div class="route-stat-compact">
+            <span class="label">Distance</span>
+            <span id="navDistance" class="value">--</span>
+        </div>
+        <div class="route-stat-compact">
+            <span class="label">Time</span>
+            <span id="navTime" class="value">--</span>
+        </div>
+        <div class="route-stat-compact">
+            <span class="label">ETA</span>
+            <span id="navETA" class="value">--</span>
+        </div>
+        <button id="stopNavBtn" class="stop-nav-btn">⏹️ STOP</button>
+    </div>
     
     <div class="control-panel" id="controlPanel">
-        <button id="startNavBtn" class="btn-start hidden">🚀 START</button>
+        <button id="startNavBtn" class="btn-start hidden">🚀 START NAVIGATION</button>
         
         <div class="search-container">
+            <div class="search-mode">
+                <button class="mode-btn" data-mode="osm">OpenStreetMap</button>
+                <button class="mode-btn active" data-mode="yandex">Yandex 🇦🇲</button>
+            </div>
+            
             <div class="input-row">
                 <span class="input-icon">🔵</span>
                 <input type="text" id="fromInput" placeholder="From: Your location..." class="search-input">
@@ -320,22 +460,9 @@
         <div class="button-group">
             <button id="locateBtn" class="btn btn-secondary">📍 GPS</button>
             <button id="clearBtn" class="btn btn-secondary">✖️ Clear</button>
-            <button id="followBtn" class="btn btn-secondary">🎯 Follow</button>
         </div>
     </div>
     
-    <div id="routeInfo" class="route-info hidden">
-        <div class="route-stat"><span class="label">Distance</span><span id="routeDistance" class="value">--</span></div>
-        <div class="route-stat">
-            <span class="label">Time</span>
-            <span>
-                <span id="routeDuration" class="value">--</span>
-                <span id="routeDurationIdeal" class="value-small"></span>
-            </span>
-        </div>
-        <div class="route-stat"><span class="label">ETA</span><span id="routeETA" class="value">--</span></div>
-        <div class="route-stat"><span class="label">Remaining</span><span id="routeRemaining" class="value">--</span></div>
-    </div>
     <div id="notification" class="notification hidden"></div>
     
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -352,267 +479,360 @@
                 this.currentRoute = null;
                 this.speed = 0;
                 this.watchId = null;
-                this.followMode = false;
-                this.isDriving = false;
-                this.uiVisible = true;
-                this.uiTimeout = null;
-                this.trafficMultiplier = 1.3; // Default: Light traffic
+                this.isNavigating = false;
+                this.trafficMultiplier = 1.3;
                 this.baseDuration = 0;
+                this.searchMode = 'yandex';
+                this.instructions = [];
+                this.currentInstruction = 0;
+                
+                // Compass
+                this.heading = 0;
+                this.compassMode = false;
+                this.orientationSupported = false;
+                
                 this.init();
             }
             
             init() {
-                this.map = L.map('map').setView([40.1872, 44.5152], 12);
+                this.map = L.map('map', {
+                    zoomControl: true,
+                    attributionControl: false
+                }).setView([40.1872, 44.5152], 12);
+                
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '© OpenStreetMap',
                     maxZoom: 19
                 }).addTo(this.map);
                 
                 this.startGPS();
+                this.initCompass();
                 this.initControls();
-                this.initUIAutoHide();
-                this.notify('Enter addresses 📍', 'success');
+                this.notify('Ready! 🚗', 'success');
             }
             
-            initUIAutoHide() {
-                const showUI = () => this.showUI();
+            initCompass() {
+                if (window.DeviceOrientationEvent) {
+                    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                        // iOS 13+ - will request on button press
+                        this.notify('Tap 🧭 to enable compass', 'info');
+                    } else {
+                        // Android - auto-start
+                        this.startCompass();
+                    }
+                }
+            }
+            
+            async requestOrientationPermission() {
+                if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    try {
+                        const permission = await DeviceOrientationEvent.requestPermission();
+                        if (permission === 'granted') {
+                            this.startCompass();
+                            return true;
+                        }
+                        return false;
+                    } catch (error) {
+                        this.notify('❌ Compass permission denied', 'error');
+                        return false;
+                    }
+                } else {
+                    this.startCompass();
+                    return true;
+                }
+            }
+            
+            startCompass() {
+                const handleOrientation = (event) => {
+                    let heading = null;
+                    
+                    if (event.webkitCompassHeading !== undefined) {
+                        // iOS
+                        heading = event.webkitCompassHeading;
+                    } else if (event.alpha !== null) {
+                        // Android
+                        heading = 360 - event.alpha;
+                    }
+                    
+                    if (heading !== null) {
+                        this.heading = heading;
+                        this.updateCompassDisplay();
+                        
+                        if (this.compassMode && this.isNavigating) {
+                            this.rotatePaneToHeading(heading);
+                        }
+                    }
+                };
                 
-                this.map.on('zoomstart', showUI);
-                this.map.on('movestart', showUI);
-                this.map.on('click', showUI);
+                window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+                window.addEventListener('deviceorientation', handleOrientation, true);
                 
-                const controlPanel = document.getElementById('controlPanel');
-                const routeInfo = document.getElementById('routeInfo');
+                this.orientationSupported = true;
+                console.log('Compass started');
+            }
+            
+            updateCompassDisplay() {
+                const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+                const index = Math.round(this.heading / 45) % 8;
+                document.getElementById('compassDirection').textContent = directions[index];
                 
-                [controlPanel, routeInfo].forEach(el => {
-                    el.addEventListener('mouseenter', () => this.cancelHideUI());
-                    el.addEventListener('mouseleave', () => this.scheduleHideUI());
-                    el.addEventListener('touchstart', () => {
-                        this.showUI();
-                        this.cancelHideUI();
-                    });
+                const icon = document.getElementById('compassIcon');
+                icon.style.transform = `rotate(${this.heading}deg)`;
+            }
+            
+            rotatePaneToHeading(heading) {
+                const mapPane = this.map.getPanes().mapPane;
+                if (mapPane) {
+                    mapPane.style.transform = `rotateZ(${-heading}deg)`;
+                }
+                
+                // Keep markers upright
+                document.querySelectorAll('.leaflet-marker-icon').forEach(marker => {
+                    marker.style.transform = `rotateZ(${heading}deg)`;
+                });
+            }
+            
+            async toggleCompassMode() {
+                if (!this.compassMode) {
+                    // Turning ON compass mode
+                    if (!this.orientationSupported) {
+                        const granted = await this.requestOrientationPermission();
+                        if (!granted) return;
+                    }
+                    
+                    this.compassMode = true;
+                    document.getElementById('compassBtn').classList.add('active');
+                    this.notify('🧭 Heading mode ON', 'success');
+                } else {
+                    // Turning OFF compass mode
+                    this.compassMode = false;
+                    document.getElementById('compassBtn').classList.remove('active');
+                    this.resetToNorth();
+                    this.notify('📍 North mode ON', 'info');
+                }
+            }
+            
+            resetToNorth() {
+                const mapPane = this.map.getPanes().mapPane;
+                if (mapPane) {
+                    mapPane.style.transition = 'transform 0.3s ease';
+                    mapPane.style.transform = 'rotateZ(0deg)';
+                    
+                    setTimeout(() => {
+                        mapPane.style.transition = '';
+                    }, 300);
+                }
+                
+                // Reset markers
+                document.querySelectorAll('.leaflet-marker-icon').forEach(marker => {
+                    marker.style.transform = '';
                 });
                 
-                this.scheduleHideUI(6000);
-            }
-            
-            showUI() {
-                this.uiVisible = true;
-                document.getElementById('controlPanel').classList.remove('hidden-ui');
-                document.getElementById('routeInfo').classList.remove('hidden-ui');
-                document.getElementById('uiHint').classList.add('hidden-ui');
-                this.cancelHideUI();
-                this.scheduleHideUI();
-            }
-            
-            hideUI() {
-                const fromInput = document.getElementById('fromInput');
-                const toInput = document.getElementById('toInput');
-                if (document.activeElement === fromInput || document.activeElement === toInput) {
-                    this.scheduleHideUI();
-                    return;
-                }
-                
-                this.uiVisible = false;
-                document.getElementById('controlPanel').classList.add('hidden-ui');
-                document.getElementById('routeInfo').classList.add('hidden-ui');
-                document.getElementById('uiHint').classList.remove('hidden-ui');
-            }
-            
-            scheduleHideUI(delay = 5000) {
-                this.cancelHideUI();
-                this.uiTimeout = setTimeout(() => this.hideUI(), delay);
-            }
-            
-            cancelHideUI() {
-                if (this.uiTimeout) {
-                    clearTimeout(this.uiTimeout);
-                    this.uiTimeout = null;
-                }
+                this.notify('⬆️ Reset to North', 'info');
             }
             
             startGPS() {
                 if (!navigator.geolocation) {
-                    this.notify('⚠️ GPS not available', 'error');
-                    document.getElementById('location').textContent = 'No GPS';
+                    this.notify('❌ GPS not available', 'error');
                     return;
                 }
                 
                 const options = {
                     enableHighAccuracy: true,
-                    timeout: 15000,
-                    maximumAge: 3000
+                    timeout: 10000,
+                    maximumAge: 0
                 };
                 
                 navigator.geolocation.getCurrentPosition(
                     (pos) => {
+                        console.log('Initial GPS:', pos.coords.latitude, pos.coords.longitude);
                         this.updatePosition(pos);
-                        this.notify('✅ GPS active!', 'success');
+                        this.notify('✅ GPS connected!', 'success');
                     },
                     (err) => {
-                        let msg = 'GPS unavailable';
-                        if (err.code === 1) msg = 'GPS denied';
-                        this.notify('⚠️ ' + msg, 'error');
-                        document.getElementById('location').textContent = msg;
+                        console.error('GPS Error:', err);
+                        this.notify('⚠️ GPS error', 'error');
                     },
                     options
                 );
                 
                 this.watchId = navigator.geolocation.watchPosition(
-                    (pos) => this.updatePosition(pos),
-                    null,
+                    (pos) => {
+                        console.log('GPS Update:', pos.coords.latitude.toFixed(6), pos.coords.longitude.toFixed(6), 'Nav:', this.isNavigating);
+                        this.updatePosition(pos);
+                    },
+                    (err) => console.error('Watch error:', err),
                     options
                 );
             }
             
             updatePosition(pos) {
                 const { latitude, longitude, speed } = pos.coords;
+                
                 this.currentPos = [latitude, longitude];
                 
+                // Update speed
                 if (speed !== null && speed >= 0) {
                     const kmh = Math.round(speed * 3.6);
                     this.speed = kmh;
                     document.getElementById('speed').textContent = kmh;
-                    
-                    this.isDriving = kmh > 5;
-                    if (this.isDriving && this.routing) {
-                        document.getElementById('drivingMode').classList.remove('hidden');
-                    } else {
-                        document.getElementById('drivingMode').classList.add('hidden');
-                    }
                 }
                 
+                // Create or update marker
                 if (!this.userMarker) {
                     this.userMarker = L.marker(this.currentPos, {
                         icon: L.divIcon({
-                            html: '<div style="width:20px;height:20px;background:#3e6ae1;border:3px solid white;border-radius:50%;box-shadow:0 0 10px rgba(62,106,225,0.8);"></div>',
-                            iconSize: [20, 20],
-                            className: ''
-                        })
+                            html: '<div style="width:26px;height:26px;background:#3e6ae1;border:4px solid white;border-radius:50%;box-shadow:0 0 25px rgba(62,106,225,1);"></div>',
+                            iconSize: [26, 26],
+                            className: 'user-position-marker'
+                        }),
+                        zIndexOffset: 1000
                     }).addTo(this.map);
+                    
                     this.map.setView(this.currentPos, 14);
                     this.updateLocationName(latitude, longitude);
                     document.getElementById('fromInput').placeholder = 'From: GPS ✅';
                 } else {
                     this.userMarker.setLatLng(this.currentPos);
-                    
-                    if (this.followMode || this.isDriving) {
-                        this.map.setView(this.currentPos);
-                    }
-                    
-                    if (this.routing && this.isDriving) {
-                        this.updateRemainingDistance();
-                    }
                 }
+                
+                // CRITICAL: Auto-follow and zoom during navigation
+                if (this.isNavigating) {
+                    console.log('Navigation active - moving map to:', this.currentPos);
+                    this.map.setView(this.currentPos, 18, {
+                        animate: false // No animation for smoother tracking
+                    });
+                    
+                    this.updateNavigationInfo();
+                }
+            }
+            
+            updateNavigationInfo() {
+                if (!this.currentRoute || !this.destMarker) return;
+                
+                const destCoords = this.destMarker.getLatLng();
+                const distance = this.calculateDistance(this.currentPos, [destCoords.lat, destCoords.lng]);
+                
+                document.getElementById('navDistance').textContent = distance.toFixed(1) + ' km';
+                this.updateTurnInstruction(distance);
+                
+                if (distance < 0.05) {
+                    this.notify('🎯 You have arrived!', 'success');
+                    setTimeout(() => {
+                        this.stopNavigation();
+                        this.clear();
+                    }, 3000);
+                }
+            }
+            
+            updateTurnInstruction(remainingDist) {
+                if (!this.instructions || this.instructions.length === 0) {
+                    document.getElementById('turnText').textContent = 'Continue on route';
+                    document.getElementById('turnDistance').textContent = remainingDist < 1 ? 
+                        Math.round(remainingDist * 1000) + ' m' : remainingDist.toFixed(1) + ' km';
+                    return;
+                }
+                
+                const nextInstruction = this.instructions[this.currentInstruction];
+                if (!nextInstruction) return;
+                
+                const distToTurn = remainingDist;
+                
+                document.getElementById('turnDistance').textContent = 
+                    distToTurn < 1 ? Math.round(distToTurn * 1000) + ' m' : distToTurn.toFixed(1) + ' km';
+                
+                document.getElementById('turnText').textContent = nextInstruction.text || 'Continue';
+                document.getElementById('turnStreet').textContent = nextInstruction.street || '';
+                
+                const type = nextInstruction.type || 'Straight';
+                document.getElementById('turnIcon').textContent = this.getTurnIcon(type);
+            }
+            
+            getTurnIcon(type) {
+                const icons = {
+                    'Left': '↰',
+                    'Right': '↱',
+                    'SlightLeft': '↖',
+                    'SlightRight': '↗',
+                    'SharpLeft': '⬅',
+                    'SharpRight': '➡',
+                    'Straight': '↑',
+                    'Uturn': '⤶'
+                };
+                return icons[type] || '↑';
+            }
+            
+            calculateDistance(pos1, pos2) {
+                const R = 6371;
+                const lat1 = pos1[0] * Math.PI / 180;
+                const lat2 = pos2[0] * Math.PI / 180;
+                const dLat = (pos2[0] - pos1[0]) * Math.PI / 180;
+                const dLon = (pos2[1] - pos1[1]) * Math.PI / 180;
+                
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                         Math.cos(lat1) * Math.cos(lat2) *
+                         Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c;
             }
             
             async updateLocationName(lat, lon) {
                 try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14`, {
-                        headers: { 'User-Agent': 'TeslaNavigator/1.0' }
-                    });
+                    const url = `https://geocode-maps.yandex.ru/1.x/?apikey=&geocode=${lon},${lat}&format=json&lang=en_US`;
+                    const res = await fetch(url);
                     const data = await res.json();
-                    const name = data.display_name || `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+                    const geoObj = data?.response?.GeoObjectCollection?.featureMember?.[0]?.GeoObject;
+                    const name = geoObj?.metaDataProperty?.GeocoderMetaData?.text || `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
                     document.getElementById('location').textContent = name.length > 30 ? name.substring(0, 30) + '...' : name;
                 } catch {
                     document.getElementById('location').textContent = `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
                 }
             }
             
-            updateRemainingDistance() {
-                if (!this.routing || !this.currentPos || !this.destMarker) return;
-                
-                const destCoords = this.destMarker.getLatLng();
-                const R = 6371;
-                const lat1 = this.currentPos[0] * Math.PI / 180;
-                const lat2 = destCoords.lat * Math.PI / 180;
-                const dLat = (destCoords.lat - this.currentPos[0]) * Math.PI / 180;
-                const dLon = (destCoords.lng - this.currentPos[1]) * Math.PI / 180;
-                
-                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                         Math.cos(lat1) * Math.cos(lat2) *
-                         Math.sin(dLon/2) * Math.sin(dLon/2);
-                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                const distance = R * c;
-                
-                document.getElementById('routeRemaining').textContent = distance.toFixed(1) + ' km';
-                
-                if (distance < 0.1) {
-                    this.notify('🎯 Arrived!', 'success');
-                    setTimeout(() => this.clear(), 4000);
-                }
-            }
-            
             initControls() {
-                // Traffic buttons
+                document.getElementById('compassBtn').onclick = () => this.toggleCompassMode();
+                document.getElementById('northBtn').onclick = () => {
+                    this.compassMode = false;
+                    document.getElementById('compassBtn').classList.remove('active');
+                    this.resetToNorth();
+                };
+                
+                document.querySelectorAll('.mode-btn').forEach(btn => {
+                    btn.onclick = () => {
+                        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        this.searchMode = btn.dataset.mode;
+                    };
+                });
+                
                 document.querySelectorAll('.traffic-btn').forEach(btn => {
                     btn.onclick = () => {
                         document.querySelectorAll('.traffic-btn').forEach(b => b.classList.remove('active'));
                         btn.classList.add('active');
                         this.trafficMultiplier = parseFloat(btn.dataset.multiplier);
-                        
-                        // Recalculate if route exists
-                        if (this.baseDuration > 0) {
-                            this.updateDurationDisplay();
-                        }
-                        
-                        this.showUI();
+                        if (this.baseDuration > 0) this.updateDurationDisplay();
                     };
                 });
                 
-                document.getElementById('goBtn').onclick = () => {
-                    this.calculateRoute();
-                    this.showUI();
-                };
+                document.getElementById('goBtn').onclick = () => this.calculateRoute();
                 
                 [document.getElementById('fromInput'), document.getElementById('toInput')].forEach(input => {
-                    input.onkeypress = (e) => {
-                        if (e.key === 'Enter') {
-                            this.calculateRoute();
-                            this.showUI();
-                        }
-                    };
-                    input.onfocus = () => {
-                        this.showUI();
-                        this.cancelHideUI();
-                    };
-                    input.onblur = () => this.scheduleHideUI();
+                    input.onkeypress = (e) => { if (e.key === 'Enter') this.calculateRoute(); };
                 });
                 
-                document.getElementById('locateBtn').onclick = () => {
-                    this.center();
-                    this.showUI();
-                };
-                document.getElementById('clearBtn').onclick = () => {
-                    this.clear();
-                    this.showUI();
-                };
-                document.getElementById('startNavBtn').onclick = () => {
-                    this.startNavigation();
-                    this.showUI();
-                };
-                document.getElementById('followBtn').onclick = () => {
-                    this.toggleFollow();
-                    this.showUI();
-                };
+                document.getElementById('locateBtn').onclick = () => this.center();
+                document.getElementById('clearBtn').onclick = () => this.clear();
+                document.getElementById('startNavBtn').onclick = () => this.startNavigation();
+                document.getElementById('stopNavBtn').onclick = () => this.stopNavigation();
             }
             
             async calculateRoute() {
                 const fromValue = document.getElementById('fromInput').value.trim();
                 const toValue = document.getElementById('toInput').value.trim();
                 
-                let startCoords = null;
+                let startCoords = fromValue ? await this.geocodeAddress(fromValue) : this.currentPos;
                 
-                if (fromValue) {
-                    this.notify('🔍 Finding start...', 'info');
-                    startCoords = await this.geocodeAddress(fromValue);
-                    if (!startCoords) {
-                        this.notify('❌ Start not found', 'error');
-                        return;
-                    }
-                } else if (this.currentPos) {
-                    startCoords = this.currentPos;
-                } else {
+                if (!startCoords) {
                     this.notify('⚠️ Enter start or enable GPS', 'error');
                     return;
                 }
@@ -636,36 +856,33 @@
                 try {
                     await new Promise(resolve => setTimeout(resolve, 300));
                     
-                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&countrycodes=am`, {
-                        headers: { 'User-Agent': 'TeslaNavigator/1.0' }
-                    });
-                    
-                    if (!res.ok) return null;
-                    
-                    const results = await res.json();
-                    if (results.length === 0) return null;
-                    
-                    return [parseFloat(results[0].lat), parseFloat(results[0].lon)];
-                } catch (error) {
-                    console.error('Geocode error:', error);
-                    return null;
+                    if (this.searchMode === 'yandex') {
+                        const url = `https://geocode-maps.yandex.ru/1.x/?apikey=&geocode=${encodeURIComponent(address)}&format=json&lang=en_US`;
+                        const res = await fetch(url);
+                        if (!res.ok) return this.geocodeWithOSM(address);
+                        const data = await res.json();
+                        const geoObj = data?.response?.GeoObjectCollection?.featureMember?.[0]?.GeoObject;
+                        if (!geoObj) return this.geocodeWithOSM(address);
+                        const coords = geoObj.Point.pos.split(' ');
+                        return [parseFloat(coords[1]), parseFloat(coords[0])];
+                    } else {
+                        return this.geocodeWithOSM(address);
+                    }
+                } catch {
+                    return this.geocodeWithOSM(address);
                 }
             }
             
-            toggleFollow() {
-                this.followMode = !this.followMode;
-                const btn = document.getElementById('followBtn');
-                if (this.followMode) {
-                    btn.style.background = '#4caf50';
-                    btn.style.color = 'white';
-                    this.notify('Auto-follow ON', 'success');
-                    if (this.currentPos) {
-                        this.map.setView(this.currentPos, 16);
-                    }
-                } else {
-                    btn.style.background = '';
-                    btn.style.color = '';
-                    this.notify('Auto-follow OFF', 'info');
+            async geocodeWithOSM(address) {
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&countrycodes=am`, {
+                        headers: { 'User-Agent': 'TeslaNavigator/1.0' }
+                    });
+                    if (!res.ok) return null;
+                    const results = await res.json();
+                    return results.length > 0 ? [parseFloat(results[0].lat), parseFloat(results[0].lon)] : null;
+                } catch {
+                    return null;
                 }
             }
             
@@ -674,20 +891,12 @@
                 if (this.destMarker) this.map.removeLayer(this.destMarker);
                 if (this.routing) this.map.removeControl(this.routing);
                 
-                this.notify('📍 Calculating...', 'info');
-                
-                this.startMarker = L.marker(start, {
-                    icon: L.divIcon({
-                        html: '<div style="width:16px;height:16px;background:#3e6ae1;border:2px solid white;border-radius:50%;"></div>',
-                        iconSize: [16, 16],
-                        className: ''
-                    })
-                }).addTo(this.map);
+                this.notify('📍 Calculating route...', 'info');
                 
                 this.destMarker = L.marker(end, {
                     icon: L.divIcon({
-                        html: '<div style="width:16px;height:16px;background:#e31937;border:2px solid white;border-radius:50%;"></div>',
-                        iconSize: [16, 16],
+                        html: '<div style="width:20px;height:20px;background:#e31937;border:3px solid white;border-radius:50%;box-shadow:0 0 10px rgba(227,25,55,0.8);"></div>',
+                        iconSize: [20, 20],
                         className: ''
                     })
                 }).addTo(this.map);
@@ -696,7 +905,7 @@
                     waypoints: [L.latLng(start), L.latLng(end)],
                     routeWhileDragging: false,
                     showAlternatives: false,
-                    lineOptions: { styles: [{ color: '#3e6ae1', weight: 6 }] },
+                    lineOptions: { styles: [{ color: '#3e6ae1', weight: 7 }] },
                     createMarker: () => null,
                     router: L.Routing.osrmv1({
                         serviceUrl: 'https://router.project-osrm.org/route/v1'
@@ -706,22 +915,16 @@
                 this.routing.on('routesfound', (e) => {
                     const route = e.routes[0];
                     this.currentRoute = route;
+                    this.instructions = route.instructions || [];
+                    this.currentInstruction = 0;
                     
                     const dist = (route.summary.totalDistance / 1000).toFixed(1);
                     this.baseDuration = Math.round(route.summary.totalTime / 60);
                     
-                    document.getElementById('routeDistance').textContent = dist + ' km';
                     this.updateDurationDisplay();
-                    document.getElementById('routeRemaining').textContent = dist + ' km';
-                    document.getElementById('routeInfo').classList.remove('hidden');
                     document.getElementById('startNavBtn').classList.remove('hidden');
                     
-                    this.notify('✅ Route ready!', 'success');
-                });
-                
-                this.routing.on('routingerror', (e) => {
-                    console.error('Route error:', e);
-                    this.notify('❌ Route failed', 'error');
+                    this.notify('✅ Route ready! Tap START', 'success');
                 });
             }
             
@@ -733,16 +936,8 @@
                     hour12: true
                 });
                 
-                document.getElementById('routeDuration').textContent = adjustedDuration + ' min';
-                
-                // Show original time if traffic is applied
-                if (this.trafficMultiplier > 1) {
-                    document.getElementById('routeDurationIdeal').textContent = this.baseDuration + ' min';
-                } else {
-                    document.getElementById('routeDurationIdeal').textContent = '';
-                }
-                
-                document.getElementById('routeETA').textContent = eta;
+                document.getElementById('navTime').textContent = adjustedDuration + ' min';
+                document.getElementById('navETA').textContent = eta;
             }
             
             startNavigation() {
@@ -751,31 +946,43 @@
                     return;
                 }
                 
-                const coords = this.currentRoute.coordinates;
-                if (coords && coords.length > 0) {
-                    const bounds = L.latLngBounds(coords.map(c => [c.lat, c.lng]));
-                    this.map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15, animate: true });
+                console.log('=== STARTING NAVIGATION ===');
+                console.log('Current position:', this.currentPos);
+                
+                this.isNavigating = true;
+                
+                document.getElementById('navBar').classList.remove('hidden');
+                document.getElementById('turnInstruction').classList.remove('hidden');
+                document.getElementById('controlPanel').classList.add('hidden-ui');
+                
+                if (this.currentPos) {
+                    console.log('Setting view to zoom 18');
+                    this.map.setView(this.currentPos, 18);
                 }
                 
-                this.followMode = true;
-                document.getElementById('followBtn').style.background = '#4caf50';
-                document.getElementById('followBtn').style.color = 'white';
+                this.updateNavigationInfo();
+                this.notify('🧭 Navigation started! Following your position...', 'success');
+            }
+            
+            stopNavigation() {
+                console.log('=== STOPPING NAVIGATION ===');
                 
-                document.getElementById('startNavBtn').textContent = '🧭 NAVIGATING';
-                document.getElementById('startNavBtn').style.background = '#2196f3';
+                this.isNavigating = false;
                 
-                this.notify('🚀 Navigation started!', 'success');
+                document.getElementById('navBar').classList.add('hidden');
+                document.getElementById('turnInstruction').classList.add('hidden');
+                document.getElementById('controlPanel').classList.remove('hidden-ui');
                 
-                setTimeout(() => {
-                    if (this.currentPos) {
-                        this.map.setView(this.currentPos, 15);
-                    }
-                }, 2000);
+                this.compassMode = false;
+                document.getElementById('compassBtn').classList.remove('active');
+                this.resetToNorth();
+                
+                this.notify('Navigation stopped', 'info');
             }
             
             center() {
                 if (this.currentPos) {
-                    this.map.setView(this.currentPos, 16);
+                    this.map.setView(this.currentPos, this.isNavigating ? 18 : 16);
                     this.notify('📍 Centered', 'success');
                 } else {
                     this.notify('⚠️ No GPS', 'error');
@@ -783,6 +990,8 @@
             }
             
             clear() {
+                this.stopNavigation();
+                
                 if (this.routing) this.map.removeControl(this.routing);
                 if (this.startMarker) this.map.removeLayer(this.startMarker);
                 if (this.destMarker) this.map.removeLayer(this.destMarker);
@@ -791,18 +1000,12 @@
                 this.currentRoute = null;
                 this.startMarker = null;
                 this.destMarker = null;
-                this.followMode = false;
+                this.instructions = [];
                 this.baseDuration = 0;
                 
-                document.getElementById('followBtn').style.background = '';
-                document.getElementById('followBtn').style.color = '';
-                document.getElementById('routeInfo').classList.add('hidden');
                 document.getElementById('startNavBtn').classList.add('hidden');
-                document.getElementById('startNavBtn').textContent = '🚀 START';
-                document.getElementById('startNavBtn').style.background = '#4caf50';
                 document.getElementById('fromInput').value = '';
                 document.getElementById('toInput').value = '';
-                document.getElementById('drivingMode').classList.add('hidden');
                 
                 this.notify('✖️ Cleared', 'info');
             }
@@ -813,7 +1016,7 @@
                 note.style.borderColor = type === 'error' ? '#e31937' : type === 'success' ? '#4caf50' : '#3e6ae1';
                 note.style.color = type === 'error' ? '#e31937' : type === 'success' ? '#4caf50' : '#3e6ae1';
                 note.classList.remove('hidden');
-                setTimeout(() => note.classList.add('hidden'), 4000);
+                setTimeout(() => note.classList.add('hidden'), 3000);
             }
         }
         
