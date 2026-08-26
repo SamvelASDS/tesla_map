@@ -111,6 +111,45 @@
         .search-input:focus { border-color: var(--tesla-blue); }
         .search-input::placeholder { color: var(--tesla-text-dim); font-size: 13px; }
         
+        .traffic-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-top: 1px solid var(--tesla-light-gray);
+            margin-top: 8px;
+        }
+        
+        .traffic-label {
+            font-size: 12px;
+            color: var(--tesla-text-dim);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .traffic-buttons {
+            display: flex;
+            gap: 4px;
+        }
+        
+        .traffic-btn {
+            padding: 4px 10px;
+            border: 1px solid var(--tesla-light-gray);
+            background: var(--tesla-gray);
+            color: var(--tesla-text-dim);
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .traffic-btn.active {
+            background: #ff9800;
+            color: white;
+            border-color: #ff9800;
+        }
+        
         .btn-go {
             background: #4caf50;
             color: white;
@@ -179,9 +218,10 @@
             pointer-events: none;
         }
         
-        .route-stat { display: flex; justify-content: space-between; margin-bottom: 6px; }
+        .route-stat { display: flex; justify-content: space-between; margin-bottom: 6px; align-items: baseline; }
         .route-stat .label { font-size: 11px; color: var(--tesla-text-dim); }
         .route-stat .value { font-size: 15px; font-weight: 700; color: var(--tesla-blue); }
+        .route-stat .value-small { font-size: 11px; color: var(--tesla-text-dim); text-decoration: line-through; margin-left: 6px; }
         
         .notification {
             position: fixed; 
@@ -242,7 +282,7 @@
 <body>
     <div class="header">
         <div class="logo">🚗 TESLA</div>
-        <div class="data-badge">⚡ READY</div>
+        <div class="data-badge">🚦 TRAFFIC MODE</div>
         <div style="display: flex; align-items: center;">
             <span id="speed" class="speed">0</span>
             <span id="location" class="status">GPS...</span>
@@ -258,12 +298,22 @@
         <div class="search-container">
             <div class="input-row">
                 <span class="input-icon">🔵</span>
-                <input type="text" id="fromInput" placeholder="From: Your location or address..." class="search-input">
+                <input type="text" id="fromInput" placeholder="From: Your location..." class="search-input">
             </div>
             <div class="input-row">
                 <span class="input-icon">🔴</span>
-                <input type="text" id="toInput" placeholder="To: Destination address..." class="search-input">
+                <input type="text" id="toInput" placeholder="To: Destination..." class="search-input">
             </div>
+            
+            <div class="traffic-toggle">
+                <span class="traffic-label">🚦 Traffic:</span>
+                <div class="traffic-buttons">
+                    <button class="traffic-btn" data-multiplier="1">None</button>
+                    <button class="traffic-btn active" data-multiplier="1.3">Light</button>
+                    <button class="traffic-btn" data-multiplier="1.6">Heavy</button>
+                </div>
+            </div>
+            
             <button id="goBtn" class="btn-go">🚀 GO</button>
         </div>
         
@@ -276,7 +326,13 @@
     
     <div id="routeInfo" class="route-info hidden">
         <div class="route-stat"><span class="label">Distance</span><span id="routeDistance" class="value">--</span></div>
-        <div class="route-stat"><span class="label">Time</span><span id="routeDuration" class="value">--</span></div>
+        <div class="route-stat">
+            <span class="label">Time</span>
+            <span>
+                <span id="routeDuration" class="value">--</span>
+                <span id="routeDurationIdeal" class="value-small"></span>
+            </span>
+        </div>
         <div class="route-stat"><span class="label">ETA</span><span id="routeETA" class="value">--</span></div>
         <div class="route-stat"><span class="label">Remaining</span><span id="routeRemaining" class="value">--</span></div>
     </div>
@@ -300,6 +356,8 @@
                 this.isDriving = false;
                 this.uiVisible = true;
                 this.uiTimeout = null;
+                this.trafficMultiplier = 1.3; // Default: Light traffic
+                this.baseDuration = 0;
                 this.init();
             }
             
@@ -313,7 +371,7 @@
                 this.startGPS();
                 this.initControls();
                 this.initUIAutoHide();
-                this.notify('Ready! Enter addresses 📍', 'success');
+                this.notify('Enter addresses 📍', 'success');
             }
             
             initUIAutoHide() {
@@ -375,7 +433,7 @@
             
             startGPS() {
                 if (!navigator.geolocation) {
-                    this.notify('⚠️ GPS not available - use addresses', 'error');
+                    this.notify('⚠️ GPS not available', 'error');
                     document.getElementById('location').textContent = 'No GPS';
                     return;
                 }
@@ -393,11 +451,8 @@
                     },
                     (err) => {
                         let msg = 'GPS unavailable';
-                        if (err.code === 1) msg = 'GPS permission denied';
-                        else if (err.code === 2) msg = 'GPS position unavailable';
-                        else if (err.code === 3) msg = 'GPS timeout';
-                        
-                        this.notify('⚠️ ' + msg + ' - use addresses', 'error');
+                        if (err.code === 1) msg = 'GPS denied';
+                        this.notify('⚠️ ' + msg, 'error');
                         document.getElementById('location').textContent = msg;
                     },
                     options
@@ -437,7 +492,7 @@
                     }).addTo(this.map);
                     this.map.setView(this.currentPos, 14);
                     this.updateLocationName(latitude, longitude);
-                    document.getElementById('fromInput').placeholder = 'From: GPS location ✅';
+                    document.getElementById('fromInput').placeholder = 'From: GPS ✅';
                 } else {
                     this.userMarker.setLatLng(this.currentPos);
                     
@@ -453,7 +508,7 @@
             
             async updateLocationName(lat, lon) {
                 try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14&addressdetails=1`, {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14`, {
                         headers: { 'User-Agent': 'TeslaNavigator/1.0' }
                     });
                     const data = await res.json();
@@ -489,6 +544,22 @@
             }
             
             initControls() {
+                // Traffic buttons
+                document.querySelectorAll('.traffic-btn').forEach(btn => {
+                    btn.onclick = () => {
+                        document.querySelectorAll('.traffic-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        this.trafficMultiplier = parseFloat(btn.dataset.multiplier);
+                        
+                        // Recalculate if route exists
+                        if (this.baseDuration > 0) {
+                            this.updateDurationDisplay();
+                        }
+                        
+                        this.showUI();
+                    };
+                });
+                
                 document.getElementById('goBtn').onclick = () => {
                     this.calculateRoute();
                     this.showUI();
@@ -637,16 +708,10 @@
                     this.currentRoute = route;
                     
                     const dist = (route.summary.totalDistance / 1000).toFixed(1);
-                    const dur = Math.round(route.summary.totalTime / 60);
-                    const eta = new Date(Date.now() + route.summary.totalTime * 1000).toLocaleTimeString('en-US', {
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        hour12: true
-                    });
+                    this.baseDuration = Math.round(route.summary.totalTime / 60);
                     
                     document.getElementById('routeDistance').textContent = dist + ' km';
-                    document.getElementById('routeDuration').textContent = dur + ' min';
-                    document.getElementById('routeETA').textContent = eta;
+                    this.updateDurationDisplay();
                     document.getElementById('routeRemaining').textContent = dist + ' km';
                     document.getElementById('routeInfo').classList.remove('hidden');
                     document.getElementById('startNavBtn').classList.remove('hidden');
@@ -656,8 +721,28 @@
                 
                 this.routing.on('routingerror', (e) => {
                     console.error('Route error:', e);
-                    this.notify('❌ Route failed. Try again.', 'error');
+                    this.notify('❌ Route failed', 'error');
                 });
+            }
+            
+            updateDurationDisplay() {
+                const adjustedDuration = Math.round(this.baseDuration * this.trafficMultiplier);
+                const eta = new Date(Date.now() + adjustedDuration * 60000).toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+                
+                document.getElementById('routeDuration').textContent = adjustedDuration + ' min';
+                
+                // Show original time if traffic is applied
+                if (this.trafficMultiplier > 1) {
+                    document.getElementById('routeDurationIdeal').textContent = this.baseDuration + ' min';
+                } else {
+                    document.getElementById('routeDurationIdeal').textContent = '';
+                }
+                
+                document.getElementById('routeETA').textContent = eta;
             }
             
             startNavigation() {
@@ -707,6 +792,7 @@
                 this.startMarker = null;
                 this.destMarker = null;
                 this.followMode = false;
+                this.baseDuration = 0;
                 
                 document.getElementById('followBtn').style.background = '';
                 document.getElementById('followBtn').style.color = '';
