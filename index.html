@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tesla Navigator</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --tesla-black: #000000;
+            --tesla-dark-gray: #1a1a1a;
+            --tesla-gray: #2a2a2a;
+            --tesla-light-gray: #3a3a3a;
+            --tesla-blue: #3e6ae1;
+            --tesla-white: #ffffff;
+            --tesla-text: #e8e8e8;
+            --tesla-text-dim: #a0a0a0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--tesla-black);
+            color: var(--tesla-text);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+        .header {
+            background: linear-gradient(180deg, var(--tesla-dark-gray) 0%, var(--tesla-black) 100%);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--tesla-light-gray);
+            z-index: 1000;
+        }
+        .logo { font-size: 18px; font-weight: 600; letter-spacing: 2px; }
+        .status { font-size: 14px; color: var(--tesla-text-dim); }
+        .speed { font-size: 24px; font-weight: 700; color: var(--tesla-blue); margin-right: 16px; }
+        #map { width: 100%; height: calc(100vh - 240px); background: var(--tesla-dark-gray); }
+        .control-panel { position: fixed; bottom: 16px; left: 16px; right: 16px; z-index: 1000; }
+        .search-container {
+            display: flex; gap: 8px; background: var(--tesla-dark-gray); padding: 12px;
+            border-radius: 12px; border: 1px solid var(--tesla-light-gray); margin-bottom: 8px;
+        }
+        .search-input {
+            flex: 1; background: var(--tesla-gray); border: 1px solid var(--tesla-light-gray);
+            border-radius: 8px; padding: 12px 16px; color: var(--tesla-text); font-size: 16px; outline: none;
+        }
+        .search-input:focus { border-color: var(--tesla-blue); }
+        .search-input::placeholder { color: var(--tesla-text-dim); }
+        .button-group {
+            display: flex; gap: 8px; background: var(--tesla-dark-gray); padding: 12px;
+            border-radius: 12px; border: 1px solid var(--tesla-light-gray);
+        }
+        .btn-start { 
+            background: #4caf50; color: var(--tesla-white); font-size: 18px; 
+            padding: 16px; width: 100%; margin-bottom: 8px; border: none; 
+            border-radius: 12px; cursor: pointer; font-weight: 700;
+        }
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--tesla-blue); color: var(--tesla-white); min-width: 60px; }
+        .btn-secondary { background: var(--tesla-gray); color: var(--tesla-text); border: 1px solid var(--tesla-light-gray); }
+        .route-info {
+            position: fixed; top: 70px; right: 16px; background: var(--tesla-dark-gray);
+            border: 1px solid var(--tesla-light-gray); border-radius: 12px; padding: 16px; z-index: 1000; min-width: 200px;
+        }
+        .route-stat { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .route-stat .label { font-size: 12px; color: var(--tesla-text-dim); }
+        .route-stat .value { font-size: 16px; font-weight: 700; color: var(--tesla-blue); }
+        .notification {
+            position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
+            background: var(--tesla-dark-gray); border: 1px solid var(--tesla-blue);
+            border-radius: 8px; padding: 12px 20px; z-index: 2000; color: var(--tesla-blue);
+        }
+        .hidden { display: none !important; }
+        .leaflet-control-zoom a { background: var(--tesla-gray) !important; color: var(--tesla-text) !important; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">🚗 TESLA NAVIGATOR</div>
+        <div style="display: flex; align-items: center;">
+            <span id="speed" class="speed">0 mph</span>
+            <span id="location" class="status">Getting location...</span>
+        </div>
+    </div>
+    <div id="map"></div>
+    <div class="control-panel">
+        <button id="startNavBtn" class="btn-start hidden">🚀 START NAVIGATION</button>
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search destination..." class="search-input">
+            <button id="searchBtn" class="btn btn-primary">🔍</button>
+        </div>
+        <div class="button-group">
+            <button id="locateBtn" class="btn btn-secondary">📍 My Location</button>
+            <button id="clearBtn" class="btn btn-secondary">✖️ Clear</button>
+        </div>
+    </div>
+    <div id="routeInfo" class="route-info hidden">
+        <div class="route-stat"><span class="label">Distance</span><span id="routeDistance" class="value">--</span></div>
+        <div class="route-stat"><span class="label">Duration</span><span id="routeDuration" class="value">--</span></div>
+        <div class="route-stat"><span class="label">ETA</span><span id="routeETA" class="value">--</span></div>
+    </div>
+    <div id="notification" class="notification hidden"></div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <script>
+        class TeslaNav {
+            constructor() { this.map = null; this.userMarker = null; this.currentPos = null; this.routing = null; this.currentRoute = null; this.speed = 0; this.init(); }
+            init() {
+                this.map = L.map('map').setView([37.7749, -122.4194], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(this.map);
+                this.startGPS(); this.initControls();
+            }
+            startGPS() {
+                if (!navigator.geolocation) { this.notify('GPS not available', 'error'); return; }
+                navigator.geolocation.getCurrentPosition((pos) => this.updatePosition(pos), (err) => this.notify('Location error: ' + err.message, 'error'), { enableHighAccuracy: true });
+                navigator.geolocation.watchPosition((pos) => this.updatePosition(pos), (err) => console.error(err), { enableHighAccuracy: true, maximumAge: 0 });
+            }
+            updatePosition(pos) {
+                const { latitude, longitude, speed } = pos.coords;
+                this.currentPos = [latitude, longitude];
+                if (speed !== null && speed >= 0) { this.speed = Math.round(speed * 2.23694); document.getElementById('speed').textContent = this.speed + ' mph'; }
+                if (!this.userMarker) {
+                    this.userMarker = L.marker(this.currentPos, {
+                        icon: L.divIcon({ html: '<div style="width:20px;height:20px;background:#3e6ae1;border:3px solid white;border-radius:50%;box-shadow:0 0 10px rgba(62,106,225,0.8);"></div>', iconSize: [20, 20], className: '' })
+                    }).addTo(this.map).bindPopup('You are here');
+                    this.map.setView(this.currentPos, 15); this.notify('Location found!', 'success');
+                } else { this.userMarker.setLatLng(this.currentPos); }
+                this.updateLocation(latitude, longitude);
+            }
+            async updateLocation(lat, lon) {
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, { headers: { 'User-Agent': 'TeslaNavigator/1.0' } });
+                    const data = await res.json();
+                    document.getElementById('location').textContent = data.display_name || `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+                } catch { document.getElementById('location').textContent = `${lat.toFixed(4)}, ${lon.toFixed(4)}`; }
+            }
+            initControls() {
+                document.getElementById('searchBtn').onclick = () => this.search();
+                document.getElementById('searchInput').onkeypress = (e) => { if (e.key === 'Enter') this.search(); };
+                document.getElementById('locateBtn').onclick = () => this.center();
+                document.getElementById('clearBtn').onclick = () => this.clear();
+                document.getElementById('startNavBtn').onclick = () => this.startNavigation();
+            }
+            async search() {
+                const query = document.getElementById('searchInput').value.trim();
+                if (!query) { this.notify('Enter a destination', 'error'); return; }
+                this.notify('Searching...', 'info');
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`, { headers: { 'User-Agent': 'TeslaNavigator/1.0' } });
+                    if (!res.ok) { this.notify('Search service unavailable', 'error'); return; }
+                    const results = await res.json();
+                    if (results.length === 0) { this.notify('Location not found', 'error'); return; }
+                    const dest = [parseFloat(results[0].lat), parseFloat(results[0].lon)];
+                    L.marker(dest).addTo(this.map).bindPopup(results[0].display_name).openPopup();
+                    if (this.currentPos) { this.createRoute(this.currentPos, dest); } 
+                    else { this.map.setView(dest, 13); this.notify('Destination found!', 'success'); }
+                } catch (error) { this.notify('Search failed', 'error'); }
+            }
+            createRoute(start, end) {
+                if (this.routing) this.map.removeControl(this.routing);
+                this.notify('Calculating route...', 'info');
+                this.routing = L.Routing.control({
+                    waypoints: [L.latLng(start), L.latLng(end)], routeWhileDragging: false, showAlternatives: false,
+                    lineOptions: { styles: [{ color: '#3e6ae1', weight: 6 }] }, createMarker: () => null
+                }).addTo(this.map);
+                this.routing.on('routesfound', (e) => {
+                    const route = e.routes[0]; this.currentRoute = route;
+                    const dist = (route.summary.totalDistance / 1609.34).toFixed(1);
+                    const dur = Math.round(route.summary.totalTime / 60);
+                    const eta = new Date(Date.now() + route.summary.totalTime * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                    document.getElementById('routeDistance').textContent = dist + ' mi';
+                    document.getElementById('routeDuration').textContent = dur + ' min';
+                    document.getElementById('routeETA').textContent = eta;
+                    document.getElementById('routeInfo').classList.remove('hidden');
+                    document.getElementById('startNavBtn').classList.remove('hidden');
+                    this.notify('Route ready! Tap START', 'success');
+                });
+            }
+            startNavigation() {
+                if (!this.currentRoute) { this.notify('Search destination first', 'error'); return; }
+                const coords = this.currentRoute.coordinates;
+                if (coords && coords.length > 0) {
+                    const bounds = L.latLngBounds(coords.map(c => [c.lat, c.lng]));
+                    this.map.fitBounds(bounds, { padding: [80, 80], maxZoom: 15, animate: true, duration: 1 });
+                    this.notify('Navigation started!', 'success');
+                    document.getElementById('startNavBtn').textContent = '🧭 Navigating...';
+                    document.getElementById('startNavBtn').style.background = '#2196f3';
+                } else { this.notify('Route not ready', 'error'); }
+            }
+            center() {
+                if (this.currentPos) { this.map.setView(this.currentPos, 15); this.notify('Centered', 'success'); }
+                else { this.notify('Location unavailable', 'error'); }
+            }
+            clear() {
+                if (this.routing) {
+                    this.map.removeControl(this.routing); this.routing = null; this.currentRoute = null;
+                    document.getElementById('routeInfo').classList.add('hidden');
+                    document.getElementById('startNavBtn').classList.add('hidden');
+                    document.getElementById('startNavBtn').textContent = '🚀 START NAVIGATION';
+                    document.getElementById('startNavBtn').style.background = '#4caf50';
+                    document.getElementById('searchInput').value = '';
+                    this.notify('Route cleared', 'info');
+                }
+            }
+            notify(msg, type) {
+                const note = document.getElementById('notification');
+                note.textContent = msg;
+                note.style.borderColor = type === 'error' ? '#e31937' : type === 'success' ? '#4caf50' : '#3e6ae1';
+                note.style.color = type === 'error' ? '#e31937' : type === 'success' ? '#4caf50' : '#3e6ae1';
+                note.classList.remove('hidden');
+                setTimeout(() => note.classList.add('hidden'), 3000);
+            }
+        }
+        document.addEventListener('DOMContentLoaded', () => { window.nav = new TeslaNav(); });
+    </script>
+</body>
+</html>
