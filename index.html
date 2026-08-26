@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tesla Navigator - Yandex Maps</title>
-    <script src="https://api-maps.yandex.ru/2.1/?apikey=&lang=en_US" type="text/javascript"></script>
+    <title>Tesla Navigator</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -27,7 +28,7 @@
         }
         .header {
             background: linear-gradient(180deg, var(--tesla-dark-gray) 0%, var(--tesla-black) 100%);
-            padding: 12px 16px;
+            padding: 10px 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -35,166 +36,376 @@
             z-index: 1000;
             position: relative;
         }
-        .logo { font-size: 18px; font-weight: 600; letter-spacing: 2px; }
-        .status { font-size: 14px; color: var(--tesla-text-dim); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .speed { font-size: 24px; font-weight: 700; color: var(--tesla-blue); margin-right: 16px; }
-        #map { width: 100%; height: calc(100vh - 240px); background: var(--tesla-dark-gray); }
-        .control-panel { position: fixed; bottom: 16px; left: 16px; right: 16px; z-index: 1000; }
-        .search-container {
-            display: flex; gap: 8px; background: var(--tesla-dark-gray); padding: 12px;
-            border-radius: 12px; border: 1px solid var(--tesla-light-gray); margin-bottom: 8px;
+        .logo { font-size: 16px; font-weight: 600; letter-spacing: 1px; }
+        .status { font-size: 11px; color: var(--tesla-text-dim); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .speed { font-size: 28px; font-weight: 700; color: var(--tesla-blue); margin-right: 12px; }
+        .data-badge {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4caf50;
+            color: #4caf50;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
         }
+        #map { 
+            width: 100%; 
+            height: calc(100vh - 60px); 
+            background: var(--tesla-dark-gray);
+            cursor: pointer;
+        }
+        
+        .control-panel { 
+            position: fixed; 
+            left: 12px;
+            top: 80px;
+            z-index: 1000;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            max-width: 340px;
+        }
+        .control-panel.hidden-ui {
+            opacity: 0;
+            transform: translateX(-20px);
+            pointer-events: none;
+        }
+        
+        .search-container {
+            background: rgba(26, 26, 26, 0.95); 
+            padding: 10px;
+            border-radius: 10px; 
+            border: 1px solid var(--tesla-light-gray); 
+            margin-bottom: 6px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+        .input-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .input-icon {
+            font-size: 18px;
+            min-width: 24px;
+            text-align: center;
+        }
+        
         .search-input {
-            flex: 1; background: var(--tesla-gray); border: 1px solid var(--tesla-light-gray);
-            border-radius: 8px; padding: 12px 16px; color: var(--tesla-text); font-size: 16px; outline: none;
+            flex: 1; 
+            background: var(--tesla-gray); 
+            border: 1px solid var(--tesla-light-gray);
+            border-radius: 6px; 
+            padding: 10px 12px; 
+            color: var(--tesla-text); 
+            font-size: 14px; 
+            outline: none;
         }
         .search-input:focus { border-color: var(--tesla-blue); }
-        .search-input::placeholder { color: var(--tesla-text-dim); }
+        .search-input::placeholder { color: var(--tesla-text-dim); font-size: 13px; }
+        
+        .btn-go {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 6px;
+        }
+        .btn-go:active { transform: scale(0.95); }
+        
         .button-group {
-            display: flex; gap: 8px; background: var(--tesla-dark-gray); padding: 12px;
-            border-radius: 12px; border: 1px solid var(--tesla-light-gray);
+            display: flex; 
+            gap: 6px; 
+            background: rgba(26, 26, 26, 0.95); 
+            padding: 10px;
+            border-radius: 10px; 
+            border: 1px solid var(--tesla-light-gray);
+            backdrop-filter: blur(10px);
         }
         .btn-start { 
-            background: #4caf50; color: var(--tesla-white); font-size: 18px; 
-            padding: 16px; width: 100%; margin-bottom: 8px; border: none; 
-            border-radius: 12px; cursor: pointer; font-weight: 700;
+            background: #4caf50; 
+            color: var(--tesla-white); 
+            font-size: 16px; 
+            padding: 14px; 
+            width: 100%; 
+            margin-bottom: 6px; 
+            border: none; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            font-weight: 700;
         }
-        .btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .btn:active { transform: scale(0.98); }
-        .btn-primary { background: var(--tesla-blue); color: var(--tesla-white); min-width: 60px; }
+        .btn { 
+            flex: 1; 
+            padding: 10px 6px; 
+            border: none; 
+            border-radius: 6px; 
+            font-size: 12px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+        }
+        .btn:active { transform: scale(0.95); }
+        .btn-primary { background: var(--tesla-blue); color: var(--tesla-white); }
         .btn-secondary { background: var(--tesla-gray); color: var(--tesla-text); border: 1px solid var(--tesla-light-gray); }
+        
         .route-info {
-            position: fixed; top: 70px; right: 16px; background: var(--tesla-dark-gray);
-            border: 1px solid var(--tesla-light-gray); border-radius: 12px; padding: 16px; z-index: 1000; min-width: 200px;
+            position: fixed; 
+            top: 80px; 
+            right: 12px; 
+            background: rgba(26, 26, 26, 0.95);
+            border: 1px solid var(--tesla-light-gray); 
+            border-radius: 10px; 
+            padding: 12px; 
+            z-index: 1000; 
+            min-width: 160px;
+            backdrop-filter: blur(10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
         }
-        .route-stat { display: flex; justify-content: space-between; margin-bottom: 8px; }
-        .route-stat .label { font-size: 12px; color: var(--tesla-text-dim); }
-        .route-stat .value { font-size: 16px; font-weight: 700; color: var(--tesla-blue); }
+        .route-info.hidden-ui {
+            opacity: 0;
+            transform: translateX(20px);
+            pointer-events: none;
+        }
+        
+        .route-stat { display: flex; justify-content: space-between; margin-bottom: 6px; }
+        .route-stat .label { font-size: 11px; color: var(--tesla-text-dim); }
+        .route-stat .value { font-size: 15px; font-weight: 700; color: var(--tesla-blue); }
+        
         .notification {
-            position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
-            background: var(--tesla-dark-gray); border: 1px solid var(--tesla-blue);
-            border-radius: 8px; padding: 12px 20px; z-index: 2000; color: var(--tesla-blue);
-            max-width: 90vw;
+            position: fixed; 
+            top: 70px; 
+            left: 50%; 
+            transform: translateX(-50%);
+            background: rgba(26, 26, 26, 0.95); 
+            border: 1px solid var(--tesla-blue);
+            border-radius: 8px; 
+            padding: 10px 16px; 
+            z-index: 2000; 
+            color: var(--tesla-blue);
+            max-width: 85vw; 
+            text-align: center; 
+            font-size: 13px;
+            backdrop-filter: blur(10px);
         }
+        
         .hidden { display: none !important; }
-        .gps-debug {
-            position: fixed; bottom: 180px; left: 16px; background: var(--tesla-dark-gray);
-            border: 1px solid var(--tesla-light-gray); border-radius: 8px; padding: 12px;
-            font-size: 12px; z-index: 1000; max-width: 90vw;
+        
+        .driving-mode {
+            position: fixed;
+            bottom: 20px;
+            right: 12px;
+            background: rgba(33, 150, 243, 0.95);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
         }
+        
+        .ui-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(26, 26, 26, 0.8);
+            color: var(--tesla-text-dim);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 11px;
+            z-index: 999;
+            backdrop-filter: blur(10px);
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        .ui-hint.hidden-ui {
+            opacity: 0;
+        }
+        
+        .leaflet-routing-container { display: none; }
+        .leaflet-control-zoom a { background: var(--tesla-gray) !important; color: var(--tesla-text) !important; border: 1px solid var(--tesla-light-gray) !important; }
     </style>
 </head>
 <body>
     <div class="header">
-        <div class="logo">🚗 TESLA NAVIGATOR</div>
+        <div class="logo">🚗 TESLA</div>
+        <div class="data-badge">⚡ READY</div>
         <div style="display: flex; align-items: center;">
-            <span id="speed" class="speed">0 km/h</span>
-            <span id="location" class="status">Getting location...</span>
+            <span id="speed" class="speed">0</span>
+            <span id="location" class="status">GPS...</span>
         </div>
     </div>
     <div id="map"></div>
-    <div class="control-panel">
-        <button id="startNavBtn" class="btn-start hidden">🚀 START NAVIGATION</button>
+    <div id="drivingMode" class="driving-mode hidden">🧭 DRIVING</div>
+    <div id="uiHint" class="ui-hint">Touch map to show controls</div>
+    
+    <div class="control-panel" id="controlPanel">
+        <button id="startNavBtn" class="btn-start hidden">🚀 START</button>
+        
         <div class="search-container">
-            <input type="text" id="searchInput" placeholder="Search destination (e.g. Yerevan, Armenia)..." class="search-input">
-            <button id="searchBtn" class="btn btn-primary">🔍</button>
+            <div class="input-row">
+                <span class="input-icon">🔵</span>
+                <input type="text" id="fromInput" placeholder="From: Your location or address..." class="search-input">
+            </div>
+            <div class="input-row">
+                <span class="input-icon">🔴</span>
+                <input type="text" id="toInput" placeholder="To: Destination address..." class="search-input">
+            </div>
+            <button id="goBtn" class="btn-go">🚀 GO</button>
         </div>
+        
         <div class="button-group">
-            <button id="locateBtn" class="btn btn-secondary">📍 My Location</button>
+            <button id="locateBtn" class="btn btn-secondary">📍 GPS</button>
             <button id="clearBtn" class="btn btn-secondary">✖️ Clear</button>
+            <button id="followBtn" class="btn btn-secondary">🎯 Follow</button>
         </div>
     </div>
+    
     <div id="routeInfo" class="route-info hidden">
         <div class="route-stat"><span class="label">Distance</span><span id="routeDistance" class="value">--</span></div>
-        <div class="route-stat"><span class="label">Duration</span><span id="routeDuration" class="value">--</span></div>
+        <div class="route-stat"><span class="label">Time</span><span id="routeDuration" class="value">--</span></div>
         <div class="route-stat"><span class="label">ETA</span><span id="routeETA" class="value">--</span></div>
+        <div class="route-stat"><span class="label">Remaining</span><span id="routeRemaining" class="value">--</span></div>
     </div>
     <div id="notification" class="notification hidden"></div>
-    <div id="gpsDebug" class="gps-debug hidden"></div>
     
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
     <script>
-        class TeslaNavYandex {
+        class TeslaNav {
             constructor() {
                 this.map = null;
                 this.userMarker = null;
                 this.currentPos = null;
+                this.startMarker = null;
                 this.destMarker = null;
-                this.route = null;
+                this.routing = null;
+                this.currentRoute = null;
                 this.speed = 0;
                 this.watchId = null;
+                this.followMode = false;
+                this.isDriving = false;
+                this.uiVisible = true;
+                this.uiTimeout = null;
                 this.init();
             }
             
             init() {
-                this.checkGPS();
-                ymaps.ready(() => {
-                    this.map = new ymaps.Map('map', {
-                        center: [40.1872, 44.5152],
-                        zoom: 12,
-                        controls: ['zoomControl', 'typeSelector', 'fullscreenControl']
-                    }, {
-                        searchControlProvider: 'yandex#search'
-                    });
-                    
-                    this.startGPS();
-                    this.initControls();
-                    this.notify('Yandex Maps loaded! 🇦🇲', 'success');
-                });
+                this.map = L.map('map').setView([40.1872, 44.5152], 12);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap',
+                    maxZoom: 19
+                }).addTo(this.map);
+                
+                this.startGPS();
+                this.initControls();
+                this.initUIAutoHide();
+                this.notify('Ready! Enter addresses 📍', 'success');
             }
             
-            checkGPS() {
-                const debug = [];
-                debug.push('🔍 GPS Check:');
-                debug.push('HTTPS: ' + (location.protocol === 'https:' ? '✅' : '❌ REQUIRED!'));
-                debug.push('Geolocation API: ' + (navigator.geolocation ? '✅' : '❌'));
-                debug.push('User Agent: ' + navigator.userAgent.substring(0, 50) + '...');
+            initUIAutoHide() {
+                const showUI = () => this.showUI();
                 
-                if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-                    this.notify('⚠️ HTTPS required for GPS!', 'error');
+                this.map.on('zoomstart', showUI);
+                this.map.on('movestart', showUI);
+                this.map.on('click', showUI);
+                
+                const controlPanel = document.getElementById('controlPanel');
+                const routeInfo = document.getElementById('routeInfo');
+                
+                [controlPanel, routeInfo].forEach(el => {
+                    el.addEventListener('mouseenter', () => this.cancelHideUI());
+                    el.addEventListener('mouseleave', () => this.scheduleHideUI());
+                    el.addEventListener('touchstart', () => {
+                        this.showUI();
+                        this.cancelHideUI();
+                    });
+                });
+                
+                this.scheduleHideUI(6000);
+            }
+            
+            showUI() {
+                this.uiVisible = true;
+                document.getElementById('controlPanel').classList.remove('hidden-ui');
+                document.getElementById('routeInfo').classList.remove('hidden-ui');
+                document.getElementById('uiHint').classList.add('hidden-ui');
+                this.cancelHideUI();
+                this.scheduleHideUI();
+            }
+            
+            hideUI() {
+                const fromInput = document.getElementById('fromInput');
+                const toInput = document.getElementById('toInput');
+                if (document.activeElement === fromInput || document.activeElement === toInput) {
+                    this.scheduleHideUI();
+                    return;
                 }
                 
-                document.getElementById('gpsDebug').innerHTML = debug.join('<br>');
-                document.getElementById('gpsDebug').classList.remove('hidden');
-                setTimeout(() => document.getElementById('gpsDebug').classList.add('hidden'), 10000);
+                this.uiVisible = false;
+                document.getElementById('controlPanel').classList.add('hidden-ui');
+                document.getElementById('routeInfo').classList.add('hidden-ui');
+                document.getElementById('uiHint').classList.remove('hidden-ui');
+            }
+            
+            scheduleHideUI(delay = 5000) {
+                this.cancelHideUI();
+                this.uiTimeout = setTimeout(() => this.hideUI(), delay);
+            }
+            
+            cancelHideUI() {
+                if (this.uiTimeout) {
+                    clearTimeout(this.uiTimeout);
+                    this.uiTimeout = null;
+                }
             }
             
             startGPS() {
                 if (!navigator.geolocation) {
-                    this.notify('❌ GPS not available on this device', 'error');
-                    document.getElementById('location').textContent = 'GPS not available';
+                    this.notify('⚠️ GPS not available - use addresses', 'error');
+                    document.getElementById('location').textContent = 'No GPS';
                     return;
                 }
                 
                 const options = {
                     enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
+                    timeout: 15000,
+                    maximumAge: 3000
                 };
-                
-                this.notify('📡 Requesting GPS permission...', 'info');
                 
                 navigator.geolocation.getCurrentPosition(
                     (pos) => {
-                        this.notify('✅ GPS permission granted!', 'success');
                         this.updatePosition(pos);
+                        this.notify('✅ GPS active!', 'success');
                     },
                     (err) => {
-                        let msg = '❌ GPS Error: ';
-                        if (err.code === 1) msg += 'Permission denied. Allow location in settings!';
-                        else if (err.code === 2) msg += 'Position unavailable. Check GPS signal.';
-                        else if (err.code === 3) msg += 'Timeout. Try again.';
-                        else msg += err.message;
+                        let msg = 'GPS unavailable';
+                        if (err.code === 1) msg = 'GPS permission denied';
+                        else if (err.code === 2) msg = 'GPS position unavailable';
+                        else if (err.code === 3) msg = 'GPS timeout';
                         
-                        this.notify(msg, 'error');
-                        document.getElementById('location').textContent = 'Location error';
-                        console.error('GPS Error:', err);
+                        this.notify('⚠️ ' + msg + ' - use addresses', 'error');
+                        document.getElementById('location').textContent = msg;
                     },
                     options
                 );
                 
                 this.watchId = navigator.geolocation.watchPosition(
                     (pos) => this.updatePosition(pos),
-                    (err) => console.error('Watch error:', err),
+                    null,
                     options
                 );
             }
@@ -204,184 +415,310 @@
                 this.currentPos = [latitude, longitude];
                 
                 if (speed !== null && speed >= 0) {
-                    this.speed = Math.round(speed * 3.6);
-                    document.getElementById('speed').textContent = this.speed + ' km/h';
+                    const kmh = Math.round(speed * 3.6);
+                    this.speed = kmh;
+                    document.getElementById('speed').textContent = kmh;
+                    
+                    this.isDriving = kmh > 5;
+                    if (this.isDriving && this.routing) {
+                        document.getElementById('drivingMode').classList.remove('hidden');
+                    } else {
+                        document.getElementById('drivingMode').classList.add('hidden');
+                    }
                 }
                 
                 if (!this.userMarker) {
-                    this.userMarker = new ymaps.Placemark(this.currentPos, {
-                        hintContent: 'You are here'
-                    }, {
-                        preset: 'islands#blueDotIcon'
-                    });
-                    this.map.geoObjects.add(this.userMarker);
-                    this.map.setCenter(this.currentPos, 15);
-                    this.notify('✅ Location found!', 'success');
+                    this.userMarker = L.marker(this.currentPos, {
+                        icon: L.divIcon({
+                            html: '<div style="width:20px;height:20px;background:#3e6ae1;border:3px solid white;border-radius:50%;box-shadow:0 0 10px rgba(62,106,225,0.8);"></div>',
+                            iconSize: [20, 20],
+                            className: ''
+                        })
+                    }).addTo(this.map);
+                    this.map.setView(this.currentPos, 14);
+                    this.updateLocationName(latitude, longitude);
+                    document.getElementById('fromInput').placeholder = 'From: GPS location ✅';
                 } else {
-                    this.userMarker.geometry.setCoordinates(this.currentPos);
+                    this.userMarker.setLatLng(this.currentPos);
+                    
+                    if (this.followMode || this.isDriving) {
+                        this.map.setView(this.currentPos);
+                    }
+                    
+                    if (this.routing && this.isDriving) {
+                        this.updateRemainingDistance();
+                    }
                 }
-                
-                this.updateLocationName(latitude, longitude);
             }
             
-            updateLocationName(lat, lon) {
-                ymaps.geocode([lat, lon]).then((res) => {
-                    const firstGeoObject = res.geoObjects.get(0);
-                    const name = firstGeoObject.getAddressLine();
-                    document.getElementById('location').textContent = name || `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
-                }).catch(() => {
-                    document.getElementById('location').textContent = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
-                });
+            async updateLocationName(lat, lon) {
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14&addressdetails=1`, {
+                        headers: { 'User-Agent': 'TeslaNavigator/1.0' }
+                    });
+                    const data = await res.json();
+                    const name = data.display_name || `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+                    document.getElementById('location').textContent = name.length > 30 ? name.substring(0, 30) + '...' : name;
+                } catch {
+                    document.getElementById('location').textContent = `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+                }
+            }
+            
+            updateRemainingDistance() {
+                if (!this.routing || !this.currentPos || !this.destMarker) return;
+                
+                const destCoords = this.destMarker.getLatLng();
+                const R = 6371;
+                const lat1 = this.currentPos[0] * Math.PI / 180;
+                const lat2 = destCoords.lat * Math.PI / 180;
+                const dLat = (destCoords.lat - this.currentPos[0]) * Math.PI / 180;
+                const dLon = (destCoords.lng - this.currentPos[1]) * Math.PI / 180;
+                
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                         Math.cos(lat1) * Math.cos(lat2) *
+                         Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                const distance = R * c;
+                
+                document.getElementById('routeRemaining').textContent = distance.toFixed(1) + ' km';
+                
+                if (distance < 0.1) {
+                    this.notify('🎯 Arrived!', 'success');
+                    setTimeout(() => this.clear(), 4000);
+                }
             }
             
             initControls() {
-                document.getElementById('searchBtn').onclick = () => this.search();
-                document.getElementById('searchInput').onkeypress = (e) => {
-                    if (e.key === 'Enter') this.search();
+                document.getElementById('goBtn').onclick = () => {
+                    this.calculateRoute();
+                    this.showUI();
                 };
-                document.getElementById('locateBtn').onclick = () => this.center();
-                document.getElementById('clearBtn').onclick = () => this.clear();
-                document.getElementById('startNavBtn').onclick = () => this.startNavigation();
+                
+                [document.getElementById('fromInput'), document.getElementById('toInput')].forEach(input => {
+                    input.onkeypress = (e) => {
+                        if (e.key === 'Enter') {
+                            this.calculateRoute();
+                            this.showUI();
+                        }
+                    };
+                    input.onfocus = () => {
+                        this.showUI();
+                        this.cancelHideUI();
+                    };
+                    input.onblur = () => this.scheduleHideUI();
+                });
+                
+                document.getElementById('locateBtn').onclick = () => {
+                    this.center();
+                    this.showUI();
+                };
+                document.getElementById('clearBtn').onclick = () => {
+                    this.clear();
+                    this.showUI();
+                };
+                document.getElementById('startNavBtn').onclick = () => {
+                    this.startNavigation();
+                    this.showUI();
+                };
+                document.getElementById('followBtn').onclick = () => {
+                    this.toggleFollow();
+                    this.showUI();
+                };
             }
             
-            search() {
-                const query = document.getElementById('searchInput').value.trim();
-                if (!query) {
-                    this.notify('Enter a destination', 'error');
+            async calculateRoute() {
+                const fromValue = document.getElementById('fromInput').value.trim();
+                const toValue = document.getElementById('toInput').value.trim();
+                
+                let startCoords = null;
+                
+                if (fromValue) {
+                    this.notify('🔍 Finding start...', 'info');
+                    startCoords = await this.geocodeAddress(fromValue);
+                    if (!startCoords) {
+                        this.notify('❌ Start not found', 'error');
+                        return;
+                    }
+                } else if (this.currentPos) {
+                    startCoords = this.currentPos;
+                } else {
+                    this.notify('⚠️ Enter start or enable GPS', 'error');
                     return;
                 }
                 
-                this.notify('🔍 Searching with Yandex...', 'info');
+                if (!toValue) {
+                    this.notify('⚠️ Enter destination', 'error');
+                    return;
+                }
                 
-                ymaps.geocode(query).then((res) => {
-                    const firstGeoObject = res.geoObjects.get(0);
-                    if (!firstGeoObject) {
-                        this.notify('Location not found', 'error');
-                        return;
-                    }
+                this.notify('🔍 Finding destination...', 'info');
+                const destCoords = await this.geocodeAddress(toValue);
+                if (!destCoords) {
+                    this.notify('❌ Destination not found', 'error');
+                    return;
+                }
+                
+                this.createRoute(startCoords, destCoords);
+            }
+            
+            async geocodeAddress(address) {
+                try {
+                    await new Promise(resolve => setTimeout(resolve, 300));
                     
-                    const coords = firstGeoObject.geometry.getCoordinates();
-                    const name = firstGeoObject.getAddressLine();
-                    
-                    if (this.destMarker) {
-                        this.map.geoObjects.remove(this.destMarker);
-                    }
-                    
-                    this.destMarker = new ymaps.Placemark(coords, {
-                        hintContent: name
-                    }, {
-                        preset: 'islands#redDotIcon'
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&countrycodes=am`, {
+                        headers: { 'User-Agent': 'TeslaNavigator/1.0' }
                     });
-                    this.map.geoObjects.add(this.destMarker);
                     
+                    if (!res.ok) return null;
+                    
+                    const results = await res.json();
+                    if (results.length === 0) return null;
+                    
+                    return [parseFloat(results[0].lat), parseFloat(results[0].lon)];
+                } catch (error) {
+                    console.error('Geocode error:', error);
+                    return null;
+                }
+            }
+            
+            toggleFollow() {
+                this.followMode = !this.followMode;
+                const btn = document.getElementById('followBtn');
+                if (this.followMode) {
+                    btn.style.background = '#4caf50';
+                    btn.style.color = 'white';
+                    this.notify('Auto-follow ON', 'success');
                     if (this.currentPos) {
-                        this.createRoute(this.currentPos, coords);
-                    } else {
-                        this.map.setCenter(coords, 13);
-                        this.notify('Destination found! Enable GPS for routing.', 'success');
+                        this.map.setView(this.currentPos, 16);
                     }
-                }).catch((err) => {
-                    this.notify('Search failed: ' + err.message, 'error');
-                    console.error('Search error:', err);
-                });
+                } else {
+                    btn.style.background = '';
+                    btn.style.color = '';
+                    this.notify('Auto-follow OFF', 'info');
+                }
             }
             
             createRoute(start, end) {
-                if (this.route) {
-                    this.map.geoObjects.remove(this.route);
-                }
+                if (this.startMarker) this.map.removeLayer(this.startMarker);
+                if (this.destMarker) this.map.removeLayer(this.destMarker);
+                if (this.routing) this.map.removeControl(this.routing);
                 
-                this.notify('📍 Calculating route...', 'info');
+                this.notify('📍 Calculating...', 'info');
                 
-                const multiRoute = new ymaps.multiRouter.MultiRoute({
-                    referencePoints: [start, end],
-                    params: {
-                        routingMode: 'auto'
-                    }
-                }, {
-                    boundsAutoApply: true,
-                    wayPointStartIconColor: "#3e6ae1",
-                    wayPointFinishIconColor: "#e31937",
-                    routeActiveStrokeWidth: 6,
-                    routeActiveStrokeColor: "#3e6ae1"
+                this.startMarker = L.marker(start, {
+                    icon: L.divIcon({
+                        html: '<div style="width:16px;height:16px;background:#3e6ae1;border:2px solid white;border-radius:50%;"></div>',
+                        iconSize: [16, 16],
+                        className: ''
+                    })
+                }).addTo(this.map);
+                
+                this.destMarker = L.marker(end, {
+                    icon: L.divIcon({
+                        html: '<div style="width:16px;height:16px;background:#e31937;border:2px solid white;border-radius:50%;"></div>',
+                        iconSize: [16, 16],
+                        className: ''
+                    })
+                }).addTo(this.map);
+                
+                this.routing = L.Routing.control({
+                    waypoints: [L.latLng(start), L.latLng(end)],
+                    routeWhileDragging: false,
+                    showAlternatives: false,
+                    lineOptions: { styles: [{ color: '#3e6ae1', weight: 6 }] },
+                    createMarker: () => null,
+                    router: L.Routing.osrmv1({
+                        serviceUrl: 'https://router.project-osrm.org/route/v1'
+                    })
+                }).addTo(this.map);
+                
+                this.routing.on('routesfound', (e) => {
+                    const route = e.routes[0];
+                    this.currentRoute = route;
+                    
+                    const dist = (route.summary.totalDistance / 1000).toFixed(1);
+                    const dur = Math.round(route.summary.totalTime / 60);
+                    const eta = new Date(Date.now() + route.summary.totalTime * 1000).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    });
+                    
+                    document.getElementById('routeDistance').textContent = dist + ' km';
+                    document.getElementById('routeDuration').textContent = dur + ' min';
+                    document.getElementById('routeETA').textContent = eta;
+                    document.getElementById('routeRemaining').textContent = dist + ' km';
+                    document.getElementById('routeInfo').classList.remove('hidden');
+                    document.getElementById('startNavBtn').classList.remove('hidden');
+                    
+                    this.notify('✅ Route ready!', 'success');
                 });
                 
-                this.route = multiRoute;
-                this.map.geoObjects.add(multiRoute);
-                
-                multiRoute.model.events.add('requestsuccess', () => {
-                    const activeRoute = multiRoute.getActiveRoute();
-                    if (activeRoute) {
-                        const distance = (activeRoute.properties.get("distance").value / 1000).toFixed(1);
-                        const duration = Math.round(activeRoute.properties.get("duration").value / 60);
-                        const eta = new Date(Date.now() + duration * 60000).toLocaleTimeString('en-US', {
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: true
-                        });
-                        
-                        document.getElementById('routeDistance').textContent = distance + ' km';
-                        document.getElementById('routeDuration').textContent = duration + ' min';
-                        document.getElementById('routeETA').textContent = eta;
-                        document.getElementById('routeInfo').classList.remove('hidden');
-                        document.getElementById('startNavBtn').classList.remove('hidden');
-                        
-                        this.notify('✅ Route ready! Tap START', 'success');
-                    }
-                });
-                
-                multiRoute.model.events.add('requestfail', (err) => {
-                    this.notify('Route calculation failed', 'error');
-                    console.error('Route error:', err);
+                this.routing.on('routingerror', (e) => {
+                    console.error('Route error:', e);
+                    this.notify('❌ Route failed. Try again.', 'error');
                 });
             }
             
             startNavigation() {
-                if (!this.route) {
-                    this.notify('Search destination first', 'error');
+                if (!this.routing || !this.currentRoute) {
+                    this.notify('Calculate route first', 'error');
                     return;
                 }
                 
-                const activeRoute = this.route.getActiveRoute();
-                if (activeRoute) {
-                    this.map.setBounds(this.route.getBounds(), {
-                        checkZoomRange: true,
-                        duration: 500
-                    });
-                    this.notify('🧭 Navigation started!', 'success');
-                    document.getElementById('startNavBtn').textContent = '🧭 Navigating...';
-                    document.getElementById('startNavBtn').style.background = '#2196f3';
-                } else {
-                    this.notify('Route not ready', 'error');
+                const coords = this.currentRoute.coordinates;
+                if (coords && coords.length > 0) {
+                    const bounds = L.latLngBounds(coords.map(c => [c.lat, c.lng]));
+                    this.map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15, animate: true });
                 }
+                
+                this.followMode = true;
+                document.getElementById('followBtn').style.background = '#4caf50';
+                document.getElementById('followBtn').style.color = 'white';
+                
+                document.getElementById('startNavBtn').textContent = '🧭 NAVIGATING';
+                document.getElementById('startNavBtn').style.background = '#2196f3';
+                
+                this.notify('🚀 Navigation started!', 'success');
+                
+                setTimeout(() => {
+                    if (this.currentPos) {
+                        this.map.setView(this.currentPos, 15);
+                    }
+                }, 2000);
             }
             
             center() {
                 if (this.currentPos) {
-                    this.map.setCenter(this.currentPos, 15, { duration: 300 });
-                    this.notify('Centered on your location', 'success');
+                    this.map.setView(this.currentPos, 16);
+                    this.notify('📍 Centered', 'success');
                 } else {
-                    this.notify('Location unavailable', 'error');
+                    this.notify('⚠️ No GPS', 'error');
                 }
             }
             
             clear() {
-                if (this.route) {
-                    this.map.geoObjects.remove(this.route);
-                    this.route = null;
-                }
-                if (this.destMarker) {
-                    this.map.geoObjects.remove(this.destMarker);
-                    this.destMarker = null;
-                }
+                if (this.routing) this.map.removeControl(this.routing);
+                if (this.startMarker) this.map.removeLayer(this.startMarker);
+                if (this.destMarker) this.map.removeLayer(this.destMarker);
                 
+                this.routing = null;
+                this.currentRoute = null;
+                this.startMarker = null;
+                this.destMarker = null;
+                this.followMode = false;
+                
+                document.getElementById('followBtn').style.background = '';
+                document.getElementById('followBtn').style.color = '';
                 document.getElementById('routeInfo').classList.add('hidden');
                 document.getElementById('startNavBtn').classList.add('hidden');
-                document.getElementById('startNavBtn').textContent = '🚀 START NAVIGATION';
+                document.getElementById('startNavBtn').textContent = '🚀 START';
                 document.getElementById('startNavBtn').style.background = '#4caf50';
-                document.getElementById('searchInput').value = '';
+                document.getElementById('fromInput').value = '';
+                document.getElementById('toInput').value = '';
+                document.getElementById('drivingMode').classList.add('hidden');
                 
-                this.notify('Route cleared', 'info');
+                this.notify('✖️ Cleared', 'info');
             }
             
             notify(msg, type) {
@@ -395,7 +732,7 @@
         }
         
         window.addEventListener('load', () => {
-            window.nav = new TeslaNavYandex();
+            window.nav = new TeslaNav();
         });
     </script>
 </body>
