@@ -1,3 +1,6 @@
+Source URL: https://raw.githubusercontent.com/SamvelASDS/tesla_map/main/index.html
+Title: index.html
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -380,6 +383,46 @@
         
         .leaflet-routing-container { display: none; }
         .leaflet-control-zoom a { background: var(--tesla-gray) !important; color: var(--tesla-text) !important; border: 1px solid var(--tesla-light-gray) !important; }
+
+        .user-cursor-marker {
+            background: transparent !important;
+            border: none !important;
+        }
+        .user-cursor {
+            width: 0;
+            height: 0;
+            position: relative;
+            filter: drop-shadow(0 0 6px rgba(62, 106, 225, 0.9));
+            transition: transform 0.15s linear;
+            transform-origin: 50% 65%;
+        }
+        .user-cursor::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -70%);
+            width: 0;
+            height: 0;
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-bottom: 28px solid #3e6ae1;
+        }
+        .user-cursor::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -55%);
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 12px solid #ffffff;
+        }
+        .map-rotating .leaflet-marker-icon:not(.user-cursor-marker) {
+            transition: transform 0.15s linear;
+        }
     </style>
 </head>
 <body>
@@ -486,10 +529,13 @@
                 this.instructions = [];
                 this.currentInstruction = 0;
                 
-                // Compass
+                // Compass / heading
                 this.heading = 0;
+                this.displayHeading = 0;
                 this.compassMode = false;
                 this.orientationSupported = false;
+                this.lastPos = null;
+                this.driveZoom = 18;
                 
                 this.init();
             }
@@ -555,11 +601,10 @@
                     }
                     
                     if (heading !== null) {
-                        this.heading = heading;
-                        this.updateCompassDisplay();
-                        
-                        if (this.compassMode && this.isNavigating) {
-                            this.rotatePaneToHeading(heading);
+                        // Device compass is useful when stationary / slow;
+                        // GPS course overrides while moving (set in updatePosition).
+                        if (this.speed < 5) {
+                            this.setHeading(heading);
                         }
                     }
                 };
@@ -583,13 +628,54 @@
             rotatePaneToHeading(heading) {
                 const mapPane = this.map.getPanes().mapPane;
                 if (mapPane) {
+                    mapPane.style.transformOrigin = '50% 50%';
                     mapPane.style.transform = `rotateZ(${-heading}deg)`;
                 }
                 
-                // Keep markers upright
-                document.querySelectorAll('.leaflet-marker-icon').forEach(marker => {
-                    marker.style.transform = `rotateZ(${heading}deg)`;
-                });
+                document.getElementById('map').classList.add('map-rotating');
+                // Cursor tip stays screen-up; Leaflet marker transforms are left alone
+                this.updateCursorRotation();
+            }
+            
+            updateCursorRotation(mapHeading = 0) {
+                const cursor = document.querySelector('.user-cursor');
+                if (!cursor) return;
+                
+                // In heading-up mode the map rotates, so keep the tip pointing up on screen.
+                // In north-up mode, rotate the cursor by absolute heading.
+                const angle = this.compassMode ? 0 : this.heading;
+                cursor.style.transform = `rotate(${angle}deg)`;
+            }
+            
+            setHeading(heading) {
+                if (heading === null || heading === undefined || Number.isNaN(heading)) return;
+                
+                // Normalize 0-360
+                heading = ((heading % 360) + 360) % 360;
+                
+                // Smooth small jitter
+                let delta = heading - this.heading;
+                if (delta > 180) delta -= 360;
+                if (delta < -180) delta += 360;
+                this.heading = ((this.heading + delta * 0.35) % 360 + 360) % 360;
+                
+                this.updateCompassDisplay();
+                
+                if (this.compassMode && this.isNavigating) {
+                    this.rotatePaneToHeading(this.heading);
+                } else {
+                    this.updateCursorRotation();
+                }
+            }
+            
+            bearingBetween(from, to) {
+                const lat1 = from[0] * Math.PI / 180;
+                const lat2 = to[0] * Math.PI / 180;
+                const dLon = (to[1] - from[1]) * Math.PI / 180;
+                const y = Math.sin(dLon) * Math.cos(lat2);
+                const x = Math.cos(lat1) * Math.sin(lat2) -
+                          Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+                return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
             }
             
             async toggleCompassMode() {
@@ -623,11 +709,13 @@
                     }, 300);
                 }
                 
-                // Reset markers
+                document.getElementById('map').classList.remove('map-rotating');
+                
                 document.querySelectorAll('.leaflet-marker-icon').forEach(marker => {
                     marker.style.transform = '';
                 });
                 
+                this.updateCursorRotation();
                 this.notify('⬆️ Reset to North', 'info');
             }
             
@@ -667,7 +755,7 @@
             }
             
             updatePosition(pos) {
-                const { latitude, longitude, speed } = pos.coords;
+                const { latitude, longitude, speed, heading } = pos.coords;
                 
                 this.currentPos = [latitude, longitude];
                 
@@ -678,30 +766,48 @@
                     document.getElementById('speed').textContent = kmh;
                 }
                 
-                // Create or update marker
+                // Prefer GPS course; else derive from movement (works while driving)
+                if (heading !== null && heading !== undefined && !Number.isNaN(heading) && speed > 1) {
+                    this.setHeading(heading);
+                } else if (this.lastPos && speed > 1.5) {
+                    const moved = this.calculateDistance(this.lastPos, this.currentPos) * 1000;
+                    if (moved > 2) {
+                        this.setHeading(this.bearingBetween(this.lastPos, this.currentPos));
+                    }
+                }
+                this.lastPos = this.currentPos;
+                
+                // Create or update sharp heading cursor
                 if (!this.userMarker) {
                     this.userMarker = L.marker(this.currentPos, {
                         icon: L.divIcon({
-                            html: '<div style="width:26px;height:26px;background:#3e6ae1;border:4px solid white;border-radius:50%;box-shadow:0 0 25px rgba(62,106,225,1);"></div>',
-                            iconSize: [26, 26],
-                            className: 'user-position-marker'
+                            html: '<div class="user-cursor"></div>',
+                            iconSize: [28, 36],
+                            iconAnchor: [14, 24],
+                            className: 'user-cursor-marker'
                         }),
-                        zIndexOffset: 1000
+                        zIndexOffset: 1000,
+                        interactive: false
                     }).addTo(this.map);
                     
                     this.map.setView(this.currentPos, 14);
+                    this.updateCursorRotation();
                     this.updateLocationName(latitude, longitude);
                     document.getElementById('fromInput').placeholder = 'From: GPS ✅';
                 } else {
                     this.userMarker.setLatLng(this.currentPos);
+                    this.updateCursorRotation(this.compassMode ? this.heading : 0);
                 }
                 
-                // CRITICAL: Auto-follow and zoom during navigation
+                // Auto-follow + driving zoom during navigation
                 if (this.isNavigating) {
-                    console.log('Navigation active - moving map to:', this.currentPos);
-                    this.map.setView(this.currentPos, 18, {
-                        animate: false // No animation for smoother tracking
+                    this.map.setView(this.currentPos, this.driveZoom, {
+                        animate: false
                     });
+                    
+                    if (this.compassMode) {
+                        this.rotatePaneToHeading(this.heading);
+                    }
                     
                     this.updateNavigationInfo();
                 }
@@ -940,7 +1046,7 @@
                 document.getElementById('navETA').textContent = eta;
             }
             
-            startNavigation() {
+            async startNavigation() {
                 if (!this.routing || !this.currentRoute) {
                     this.notify('Calculate route first', 'error');
                     return;
@@ -955,13 +1061,21 @@
                 document.getElementById('turnInstruction').classList.remove('hidden');
                 document.getElementById('controlPanel').classList.add('hidden-ui');
                 
+                // Driving view: zoom in close for comfortable navigation
                 if (this.currentPos) {
-                    console.log('Setting view to zoom 18');
-                    this.map.setView(this.currentPos, 18);
+                    this.map.setView(this.currentPos, this.driveZoom, { animate: true });
                 }
                 
+                // Auto heading-up: map turns with left/right movement
+                if (!this.orientationSupported) {
+                    await this.requestOrientationPermission();
+                }
+                this.compassMode = true;
+                document.getElementById('compassBtn').classList.add('active');
+                this.rotatePaneToHeading(this.heading);
+                
                 this.updateNavigationInfo();
-                this.notify('🧭 Navigation started! Following your position...', 'success');
+                this.notify('🧭 Drive mode: zoomed in + heading cursor', 'success');
             }
             
             stopNavigation() {
@@ -982,7 +1096,10 @@
             
             center() {
                 if (this.currentPos) {
-                    this.map.setView(this.currentPos, this.isNavigating ? 18 : 16);
+                    this.map.setView(this.currentPos, this.isNavigating ? this.driveZoom : 16);
+                    if (this.isNavigating && this.compassMode) {
+                        this.rotatePaneToHeading(this.heading);
+                    }
                     this.notify('📍 Centered', 'success');
                 } else {
                     this.notify('⚠️ No GPS', 'error');
