@@ -509,6 +509,7 @@ Title: index.html
     <div id="notification" class="notification hidden"></div>
     
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
     <script>
         class TeslaNav {
@@ -536,19 +537,37 @@ Title: index.html
                 this.orientationSupported = false;
                 this.lastPos = null;
                 this.driveZoom = 18;
+                this.supportsRotate = typeof L.Map.prototype.setBearing === 'function';
+                
+                // Remaining route (trim passed segment)
+                this.routeCoords = [];
+                this.routeProgressIndex = 0;
+                this.remainingLine = null;
                 
                 this.init();
             }
             
             init() {
-                this.map = L.map('map', {
+                const mapOpts = {
                     zoomControl: true,
-                    attributionControl: false
-                }).setView([40.1872, 44.5152], 12);
+                    attributionControl: false,
+                    maxZoom: 19
+                };
+                if (this.supportsRotate) {
+                    mapOpts.rotate = true;
+                    mapOpts.bearing = 0;
+                    mapOpts.rotateControl = false;
+                    mapOpts.touchRotate = false;
+                }
+                
+                this.map = L.map('map', mapOpts).setView([40.1872, 44.5152], 12);
                 
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '© OpenStreetMap',
-                    maxZoom: 19
+                    maxZoom: 19,
+                    keepBuffer: 8,
+                    updateWhenIdle: false,
+                    updateWhenZooming: true
                 }).addTo(this.map);
                 
                 this.startGPS();
@@ -626,23 +645,19 @@ Title: index.html
             }
             
             rotatePaneToHeading(heading) {
-                const mapPane = this.map.getPanes().mapPane;
-                if (mapPane) {
-                    mapPane.style.transformOrigin = '50% 50%';
-                    mapPane.style.transform = `rotateZ(${-heading}deg)`;
+                // Proper Leaflet rotate loads tiles for corners (no black gaps).
+                // Avoid CSS mapPane rotate — that breaks tile loading.
+                if (this.supportsRotate && typeof this.map.setBearing === 'function') {
+                    this.map.setBearing(heading);
                 }
-                
-                document.getElementById('map').classList.add('map-rotating');
-                // Cursor tip stays screen-up; Leaflet marker transforms are left alone
                 this.updateCursorRotation();
             }
             
-            updateCursorRotation(mapHeading = 0) {
+            updateCursorRotation() {
                 const cursor = document.querySelector('.user-cursor');
                 if (!cursor) return;
                 
-                // In heading-up mode the map rotates, so keep the tip pointing up on screen.
-                // In north-up mode, rotate the cursor by absolute heading.
+                // Heading-up: tip stays screen-up. North-up: rotate by absolute heading.
                 const angle = this.compassMode ? 0 : this.heading;
                 cursor.style.transform = `rotate(${angle}deg)`;
             }
@@ -666,6 +681,72 @@ Title: index.html
                 } else {
                     this.updateCursorRotation();
                 }
+            }
+            
+            applyDriveView(animate = false) {
+                if (!this.currentPos) return;
+                
+                const zoom = this.driveZoom;
+                this.map.setView(this.currentPos, zoom, { animate: !!animate });
+                
+                if (this.compassMode) {
+                    this.rotatePaneToHeading(this.heading);
+                }
+                
+                // Re-assert zoom: routing / layout can fight the first setView
+                clearTimeout(this._driveViewTimer);
+                clearTimeout(this._driveViewTimer2);
+                this._driveViewTimer = setTimeout(() => {
+                    if (!this.isNavigating || !this.currentPos) return;
+                    if (this.map.getZoom() < zoom) this.map.setZoom(zoom, { animate: false });
+                    this.map.panTo(this.currentPos, { animate: false });
+                    if (this.compassMode) this.rotatePaneToHeading(this.heading);
+                }, 120);
+                this._driveViewTimer2 = setTimeout(() => {
+                    if (!this.isNavigating || !this.currentPos) return;
+                    this.map.setZoom(zoom, { animate: false });
+                    this.map.panTo(this.currentPos, { animate: false });
+                    this.map.invalidateSize(false);
+                    if (this.compassMode) this.rotatePaneToHeading(this.heading);
+                }, 450);
+            }
+            
+            trimPassedRoute() {
+                if (!this.isNavigating || !this.remainingLine || !this.routeCoords.length || !this.currentPos) {
+                    return;
+                }
+                
+                const coords = this.routeCoords;
+                let closestIdx = this.routeProgressIndex;
+                let closestDist = Infinity;
+                
+                // Search forward from last progress (and a small look-back)
+                const start = Math.max(0, this.routeProgressIndex - 2);
+                for (let i = start; i < coords.length; i++) {
+                    const d = this.calculateDistance(this.currentPos, coords[i]);
+                    if (d < closestDist) {
+                        closestDist = d;
+                        closestIdx = i;
+                    }
+                    // Far ahead of closest — stop scanning
+                    if (i > closestIdx + 40 && closestDist < 0.08) break;
+                }
+                
+                // Advance only when we have clearly passed a point (~25m)
+                if (closestIdx > this.routeProgressIndex && closestDist < 0.04) {
+                    this.routeProgressIndex = closestIdx;
+                } else if (closestIdx >= this.routeProgressIndex) {
+                    this.routeProgressIndex = closestIdx;
+                }
+                
+                const remaining = coords.slice(this.routeProgressIndex);
+                if (remaining.length === 0) {
+                    this.remainingLine.setLatLngs([this.currentPos]);
+                    return;
+                }
+                
+                // Line starts at car so the passed blue trail disappears
+                this.remainingLine.setLatLngs([this.currentPos, ...remaining]);
             }
             
             bearingBetween(from, to) {
@@ -699,21 +780,12 @@ Title: index.html
             }
             
             resetToNorth() {
-                const mapPane = this.map.getPanes().mapPane;
-                if (mapPane) {
-                    mapPane.style.transition = 'transform 0.3s ease';
-                    mapPane.style.transform = 'rotateZ(0deg)';
-                    
-                    setTimeout(() => {
-                        mapPane.style.transition = '';
-                    }, 300);
+                if (this.supportsRotate && typeof this.map.setBearing === 'function') {
+                    this.map.setBearing(0);
+                } else {
+                    const mapPane = this.map.getPanes().mapPane;
+                    if (mapPane) mapPane.style.transform = '';
                 }
-                
-                document.getElementById('map').classList.remove('map-rotating');
-                
-                document.querySelectorAll('.leaflet-marker-icon').forEach(marker => {
-                    marker.style.transform = '';
-                });
                 
                 this.updateCursorRotation();
                 this.notify('⬆️ Reset to North', 'info');
@@ -799,16 +871,10 @@ Title: index.html
                     this.updateCursorRotation(this.compassMode ? this.heading : 0);
                 }
                 
-                // Auto-follow + driving zoom during navigation
+                // Auto-follow + trim passed route + driving zoom
                 if (this.isNavigating) {
-                    this.map.setView(this.currentPos, this.driveZoom, {
-                        animate: false
-                    });
-                    
-                    if (this.compassMode) {
-                        this.rotatePaneToHeading(this.heading);
-                    }
-                    
+                    this.trimPassedRoute();
+                    this.applyDriveView(false);
                     this.updateNavigationInfo();
                 }
             }
@@ -996,6 +1062,12 @@ Title: index.html
                 if (this.startMarker) this.map.removeLayer(this.startMarker);
                 if (this.destMarker) this.map.removeLayer(this.destMarker);
                 if (this.routing) this.map.removeControl(this.routing);
+                if (this.remainingLine) {
+                    this.map.removeLayer(this.remainingLine);
+                    this.remainingLine = null;
+                }
+                this.routeCoords = [];
+                this.routeProgressIndex = 0;
                 
                 this.notify('📍 Calculating route...', 'info');
                 
@@ -1011,7 +1083,11 @@ Title: index.html
                     waypoints: [L.latLng(start), L.latLng(end)],
                     routeWhileDragging: false,
                     showAlternatives: false,
-                    lineOptions: { styles: [{ color: '#3e6ae1', weight: 7 }] },
+                    fitSelectedRoutes: false,
+                    lineOptions: {
+                        // Hide built-in line; we draw a trimmable remaining line
+                        styles: [{ color: '#3e6ae1', weight: 7, opacity: 0 }]
+                    },
                     createMarker: () => null,
                     router: L.Routing.osrmv1({
                         serviceUrl: 'https://router.project-osrm.org/route/v1'
@@ -1024,11 +1100,27 @@ Title: index.html
                     this.instructions = route.instructions || [];
                     this.currentInstruction = 0;
                     
-                    const dist = (route.summary.totalDistance / 1000).toFixed(1);
+                    this.routeCoords = (route.coordinates || []).map(c => [c.lat, c.lng]);
+                    this.routeProgressIndex = 0;
+                    
+                    if (this.remainingLine) this.map.removeLayer(this.remainingLine);
+                    this.remainingLine = L.polyline(this.routeCoords, {
+                        color: '#3e6ae1',
+                        weight: 7,
+                        opacity: 0.95,
+                        lineJoin: 'round',
+                        lineCap: 'round'
+                    }).addTo(this.map);
+                    
                     this.baseDuration = Math.round(route.summary.totalTime / 60);
                     
                     this.updateDurationDisplay();
                     document.getElementById('startNavBtn').classList.remove('hidden');
+                    
+                    // Keep overview readable before START; don't steal drive zoom yet
+                    if (!this.isNavigating && this.routeCoords.length) {
+                        this.map.fitBounds(this.remainingLine.getBounds(), { padding: [40, 40], maxZoom: 15 });
+                    }
                     
                     this.notify('✅ Route ready! Tap START', 'success');
                 });
@@ -1056,32 +1148,32 @@ Title: index.html
                 console.log('Current position:', this.currentPos);
                 
                 this.isNavigating = true;
+                this.routeProgressIndex = 0;
                 
                 document.getElementById('navBar').classList.remove('hidden');
                 document.getElementById('turnInstruction').classList.remove('hidden');
                 document.getElementById('controlPanel').classList.add('hidden-ui');
                 
-                // Driving view: zoom in close for comfortable navigation
-                if (this.currentPos) {
-                    this.map.setView(this.currentPos, this.driveZoom, { animate: true });
-                }
-                
-                // Auto heading-up: map turns with left/right movement
+                // Auto heading-up: map turns with left/right (proper rotate = no black tiles)
                 if (!this.orientationSupported) {
                     await this.requestOrientationPermission();
                 }
                 this.compassMode = true;
                 document.getElementById('compassBtn').classList.add('active');
-                this.rotatePaneToHeading(this.heading);
+                
+                this.trimPassedRoute();
+                this.applyDriveView(true);
                 
                 this.updateNavigationInfo();
-                this.notify('🧭 Drive mode: zoomed in + heading cursor', 'success');
+                this.notify('🧭 Drive mode: zoomed in + remaining route', 'success');
             }
             
             stopNavigation() {
                 console.log('=== STOPPING NAVIGATION ===');
                 
                 this.isNavigating = false;
+                clearTimeout(this._driveViewTimer);
+                clearTimeout(this._driveViewTimer2);
                 
                 document.getElementById('navBar').classList.add('hidden');
                 document.getElementById('turnInstruction').classList.add('hidden');
@@ -1091,14 +1183,21 @@ Title: index.html
                 document.getElementById('compassBtn').classList.remove('active');
                 this.resetToNorth();
                 
+                // Restore full route line when stopping
+                if (this.remainingLine && this.routeCoords.length) {
+                    this.routeProgressIndex = 0;
+                    this.remainingLine.setLatLngs(this.routeCoords);
+                }
+                
                 this.notify('Navigation stopped', 'info');
             }
             
             center() {
                 if (this.currentPos) {
-                    this.map.setView(this.currentPos, this.isNavigating ? this.driveZoom : 16);
-                    if (this.isNavigating && this.compassMode) {
-                        this.rotatePaneToHeading(this.heading);
+                    if (this.isNavigating) {
+                        this.applyDriveView(false);
+                    } else {
+                        this.map.setView(this.currentPos, 16);
                     }
                     this.notify('📍 Centered', 'success');
                 } else {
@@ -1112,11 +1211,15 @@ Title: index.html
                 if (this.routing) this.map.removeControl(this.routing);
                 if (this.startMarker) this.map.removeLayer(this.startMarker);
                 if (this.destMarker) this.map.removeLayer(this.destMarker);
+                if (this.remainingLine) this.map.removeLayer(this.remainingLine);
                 
                 this.routing = null;
                 this.currentRoute = null;
                 this.startMarker = null;
                 this.destMarker = null;
+                this.remainingLine = null;
+                this.routeCoords = [];
+                this.routeProgressIndex = 0;
                 this.instructions = [];
                 this.baseDuration = 0;
                 
