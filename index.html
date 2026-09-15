@@ -71,45 +71,48 @@
             width: 100%;
             height: 100%;
             position: relative;
+            overflow: visible;
         }
 
-        /* Drive camera: tilt so you see further ahead while zoomed in.
-           Oversized map + heavy tile buffer avoids black corners after tilt/rotate.
-           3D transform lives on .map-camera (viewport-sized) so Up/Left/Angle/Zoom
-           stay screen-stable when the car turns. */
+        /* Drive camera: 3D tilt on the map itself (not a clipping wrapper).
+           Camera X/Y use vw/vh so saved Up/Left values stay screen-sized.
+           Map is only modestly oversized so Leaflet can actually load tiles. */
         .map-stage.drive-3d {
-            perspective: var(--cam-persp, 1100px);
-            perspective-origin: var(--cam-pox, 50%) var(--cam-poy, 72%);
-            background: #c8c4bc;
+            perspective: var(--cam-persp, 900px);
+            perspective-origin: 50% 68%;
+            background: #d9d5cc;
+            overflow: hidden;
         }
         .map-stage.drive-3d .map-camera {
-            --route-yaw: 0deg;
-            transform: translateX(var(--cam-x, -14.6%)) translateY(var(--cam-height, -2.3%)) rotateX(var(--cam-angle, 56.4deg)) rotateZ(var(--route-yaw)) scale(var(--cam-scale, 1.48));
-            transform-origin: 50% 70%;
-            transition: none;
-            will-change: transform;
+            transform: none;
+            will-change: auto;
+            overflow: visible;
         }
         .map-stage.drive-3d #map {
             position: absolute;
-            height: var(--map-load-size, 560%);
-            width: var(--map-load-size, 560%);
-            left: var(--map-load-left, -230%);
-            top: var(--map-load-top, -230%);
-            background: #c8c4bc;
+            height: var(--map-load-size, 200%);
+            width: var(--map-load-size, 200%);
+            left: var(--map-load-left, -50%);
+            top: var(--map-load-top, -50%);
+            --route-yaw: 0deg;
+            transform: translate3d(calc(var(--cam-x, -14.6) * 1vw), calc(var(--cam-y, -2.3) * 1vh), 0px) rotateX(var(--cam-angle, 56.4deg)) rotateZ(var(--route-yaw)) scale(var(--cam-scale, 1.35));
+            transform-origin: 50% 62%;
+            transition: none;
+            background: #d9d5cc;
         }
         .map-stage.drive-3d .leaflet-control-zoom {
             display: none;
         }
-        .map-stage.drive-3d .leaflet-tile-pane {
-            backface-visibility: hidden;
+        .leaflet-container {
+            background: #d9d5cc;
+            transition: none !important;
+        }
+        .leaflet-tile {
+            visibility: inherit !important;
         }
         .leaflet-fade-anim .leaflet-tile,
         .leaflet-zoom-anim .leaflet-tile {
             opacity: 1 !important;
-        }
-        .leaflet-container {
-            background: #c8c4bc;
-            transition: none !important;
         }
         
         /* Compass controls */
@@ -882,7 +885,7 @@
                 const mapOpts = {
                     zoomControl: true,
                     attributionControl: false,
-                    maxZoom: 22,
+                    maxZoom: 19,
                     zoomSnap: 0.1,
                     zoomDelta: 0.1,
                     fadeAnimation: false,
@@ -900,9 +903,9 @@
             
             applyMapQuality(level, silent = false) {
                 const presets = {
-                    low:  { keepBuffer: 6,  maxNativeZoom: 14, updateWhenIdle: true,  updateInterval: 400, size: 280 },
-                    med:  { keepBuffer: 16, maxNativeZoom: 17, updateWhenIdle: false, updateInterval: 200, size: 420 },
-                    high: { keepBuffer: 28, maxNativeZoom: 19, updateWhenIdle: false, updateInterval: 80,  size: 560 }
+                    low:  { keepBuffer: 4,  maxNativeZoom: 16, updateWhenIdle: true,  updateInterval: 400, size: 140 },
+                    med:  { keepBuffer: 6,  maxNativeZoom: 18, updateWhenIdle: false, updateInterval: 200, size: 170 },
+                    high: { keepBuffer: 8,  maxNativeZoom: 19, updateWhenIdle: false, updateInterval: 120, size: 200 }
                 };
                 const styles = {
                     osm: {
@@ -935,7 +938,7 @@
                 this.baseTileLayer = L.tileLayer(style.url, {
                     attribution: style.attrib,
                     subdomains: style.subdomains,
-                    maxZoom: 22,
+                    maxZoom: style.maxNative,
                     maxNativeZoom: Math.min(q.maxNativeZoom, style.maxNative),
                     keepBuffer: q.keepBuffer,
                     updateWhenIdle: q.updateWhenIdle,
@@ -943,6 +946,16 @@
                     updateInterval: q.updateInterval,
                     detectRetina: false
                 }).addTo(this.map);
+
+                this._tileFail = 0;
+                this.baseTileLayer.on('tileerror', () => {
+                    this._tileFail = (this._tileFail || 0) + 1;
+                    if (this._tileFail >= 8 && this.mapStyle !== 'osm') {
+                        this.mapStyle = 'osm';
+                        this.applyMapQuality(this.mapQuality, true);
+                        this.notify('Map tiles switched to OSM', 'info');
+                    }
+                });
 
                 this.applyDriveMapSize(q.size);
 
@@ -981,7 +994,7 @@
             }
 
             camEl() {
-                return document.getElementById('mapCamera') || document.getElementById('map');
+                return document.getElementById('map');
             }
 
             setMapQuality(level) {
@@ -1165,26 +1178,22 @@
                 const stage = document.getElementById('mapStage');
                 if (!stage) return;
                 stage.classList.toggle('drive-3d', !!enabled);
-                setTimeout(() => {
+                this._driveFocus = null;
+                const kick = () => {
                     if (!this.map) return;
                     this.map.invalidateSize(false);
-                    this.refreshTiles();
-                }, 50);
-                setTimeout(() => {
-                    if (!this.map) return;
-                    this.map.invalidateSize(false);
-                    this.refreshTiles();
-                }, 300);
+                    if (enabled && this.currentPos) this.applyDriveView(false);
+                };
+                requestAnimationFrame(() => {
+                    kick();
+                    setTimeout(kick, 80);
+                    setTimeout(kick, 250);
+                });
             }
             
             refreshTiles() {
                 if (!this.map) return;
                 this.map.invalidateSize(false);
-                this.map.eachLayer((layer) => {
-                    if (layer.redraw) {
-                        try { layer.redraw(); } catch (_) {}
-                    }
-                });
             }
             
             getRouteAheadBearing() {
@@ -1239,13 +1248,18 @@
                 if (!this.currentPos) return;
                 
                 const zoom = this.driveZoom;
-                // Stay locked on the car. A short look-ahead along CURRENT heading
-                // (not around the next corner) keeps the camera from swinging
-                // to a side street when the route turns.
                 const look = (this.camLookAhead != null) ? this.camLookAhead : 18;
                 const focus = this.pointAhead(look) || this.currentPos;
-                
-                this.map.setView(focus, zoom, { animate: false });
+                const prev = this._driveFocus;
+                const movedM = prev ? this.calculateDistance(prev, focus) * 1000 : 999;
+                const zoomed = this._driveZoomApplied !== zoom;
+
+                // Don't reset Leaflet every animation frame — that leaves the map gray.
+                if (!prev || movedM > 8 || zoomed) {
+                    this.map.setView(focus, zoom, { animate: false });
+                    this._driveFocus = focus;
+                    this._driveZoomApplied = zoom;
+                }
                 
                 if (this.compassMode) {
                     this.rotatePaneToHeading(this.heading);
@@ -1651,15 +1665,15 @@
 
             applyCamera() {
                 const cam = this.currentCamera();
-                this.driveZoom = Math.min(22, Math.max(12, cam.zoom));
+                this.driveZoom = Math.min(19, Math.max(13, cam.zoom));
                 const extra = Math.max(0, cam.zoom - 18);
                 const scale = 1.2 + extra * 0.35;
 
                 const camEl = this.camEl();
                 if (camEl) {
                     camEl.style.setProperty('--cam-angle', cam.angle + 'deg');
-                    camEl.style.setProperty('--cam-x', cam.x + '%');
-                    camEl.style.setProperty('--cam-height', cam.height + '%');
+                    camEl.style.setProperty('--cam-x', String(cam.x));
+                    camEl.style.setProperty('--cam-y', String(cam.height));
                     camEl.style.setProperty('--cam-scale', String(scale));
                 }
 
