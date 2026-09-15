@@ -1,6 +1,3 @@
-Source URL: https://raw.githubusercontent.com/SamvelASDS/tesla_map/main/index.html
-Title: index.html
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -70,43 +67,56 @@ Title: index.html
             position: relative;
         }
 
+        .map-camera {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
         /* Drive camera: tilt so you see further ahead while zoomed in.
-           Oversized map + heavy tile buffer avoids black corners after tilt/rotate. */
+           Oversized map + heavy tile buffer avoids black corners after tilt/rotate.
+           3D transform lives on .map-camera (viewport-sized) so Up/Left/Angle/Zoom
+           stay screen-stable when the car turns. */
         .map-stage.drive-3d {
-            perspective: 1400px;
-            perspective-origin: 50% 40%;
-            background: #1a1a1a;
+            perspective: var(--cam-persp, 1100px);
+            perspective-origin: var(--cam-pox, 50%) var(--cam-poy, 72%);
+            background: #c8c4bc;
+        }
+        .map-stage.drive-3d .map-camera {
+            --route-yaw: 0deg;
+            transform: translateX(var(--cam-x, -14.6%)) translateY(var(--cam-height, -2.3%)) rotateX(var(--cam-angle, 56.4deg)) rotateZ(var(--route-yaw)) scale(var(--cam-scale, 1.48));
+            transform-origin: 50% 70%;
+            transition: none;
+            will-change: transform;
         }
         .map-stage.drive-3d #map {
-            height: 260%;
-            width: 220%;
-            left: -60%;
-            top: -40%;
             position: absolute;
-            transform: rotateX(52deg) translateY(-6%) scale(1.35);
-            transform-origin: 50% 72%;
-            will-change: transform;
-            background: #1a1a1a;
+            height: var(--map-load-size, 560%);
+            width: var(--map-load-size, 560%);
+            left: var(--map-load-left, -230%);
+            top: var(--map-load-top, -230%);
+            background: #c8c4bc;
         }
         .map-stage.drive-3d .leaflet-control-zoom {
-            transform: rotateX(-52deg);
-            transform-origin: left bottom;
+            display: none;
         }
         .map-stage.drive-3d .leaflet-tile-pane {
-            /* Help GPU keep tiles painted while camera tilts */
             backface-visibility: hidden;
         }
-        
-        /* Map rotation container */
+        .leaflet-fade-anim .leaflet-tile,
+        .leaflet-zoom-anim .leaflet-tile {
+            opacity: 1 !important;
+        }
         .leaflet-container {
+            background: #c8c4bc;
             transition: none !important;
         }
         
         /* Compass controls */
         .compass-controls {
             position: fixed;
-            bottom: 140px;
-            right: 16px;
+            bottom: 16px;
+            right: 12px;
             z-index: 1000;
             display: flex;
             flex-direction: column;
@@ -250,7 +260,7 @@ Title: index.html
             gap: 4px;
         }
         
-        .traffic-btn {
+        .traffic-btn, .quality-btn, .style-btn {
             padding: 4px 10px;
             border: 1px solid var(--tesla-light-gray);
             background: var(--tesla-gray);
@@ -265,6 +275,11 @@ Title: index.html
             background: #ff9800;
             color: white;
             border-color: #ff9800;
+        }
+        .quality-btn.active, .style-btn.active {
+            background: var(--tesla-blue);
+            color: white;
+            border-color: var(--tesla-blue);
         }
         
         .btn-go {
@@ -318,81 +333,97 @@ Title: index.html
         
         .turn-instruction {
             position: fixed;
-            top: 80px;
+            top: 56px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(26, 26, 26, 0.98);
-            border: 2px solid var(--tesla-blue);
-            border-radius: 16px;
-            padding: 20px 24px;
+            background: rgba(26, 26, 26, 0.92);
+            border: 1px solid var(--tesla-light-gray);
+            border-radius: 10px;
+            padding: 6px 12px;
             z-index: 2000;
-            min-width: 300px;
-            max-width: 90vw;
+            width: auto;
+            min-width: 0;
+            max-width: 70vw;
             backdrop-filter: blur(10px);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
         .turn-instruction .icon {
-            font-size: 48px;
+            font-size: 16px;
             text-align: center;
-            margin-bottom: 12px;
+            margin-bottom: 0;
+            flex-shrink: 0;
         }
         
         .turn-instruction .distance {
-            font-size: 32px;
+            font-size: 14px;
             font-weight: 700;
             color: var(--tesla-blue);
             text-align: center;
-            margin-bottom: 8px;
+            margin-bottom: 0;
+            white-space: nowrap;
         }
         
         .turn-instruction .text {
-            font-size: 16px;
+            font-size: 12px;
             color: var(--tesla-text);
-            text-align: center;
-            line-height: 1.4;
+            text-align: left;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 34vw;
         }
         
         .turn-instruction .street {
-            font-size: 14px;
+            font-size: 11px;
             color: var(--tesla-text-dim);
-            text-align: center;
-            margin-top: 8px;
-            font-style: italic;
+            text-align: left;
+            margin-top: 0;
+            font-style: normal;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 28vw;
         }
         
         .route-info {
-            position: fixed; 
-            bottom: 20px; 
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(26, 26, 26, 0.95);
-            border: 1px solid var(--tesla-light-gray); 
-            border-radius: 16px; 
-            padding: 16px 24px; 
-            z-index: 1000; 
-            backdrop-filter: blur(10px);
+            position: fixed;
+            top: 58px;
+            right: 10px;
+            left: auto;
+            bottom: auto;
+            transform: none;
+            background: rgba(26, 26, 26, 0.72);
+            border: 1px solid var(--tesla-light-gray);
+            border-radius: 10px;
+            padding: 6px 8px;
+            z-index: 1000;
+            backdrop-filter: blur(8px);
             display: flex;
-            gap: 24px;
+            gap: 8px;
             align-items: center;
         }
         
-        .route-stat-compact { 
+        .route-stat-compact {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 4px;
+            gap: 1px;
         }
-        .route-stat-compact .label { font-size: 10px; color: var(--tesla-text-dim); text-transform: uppercase; }
-        .route-stat-compact .value { font-size: 18px; font-weight: 700; color: var(--tesla-blue); }
+        .route-stat-compact .label { font-size: 8px; color: var(--tesla-text-dim); text-transform: uppercase; }
+        .route-stat-compact .value { font-size: 11px; font-weight: 700; color: var(--tesla-blue); }
         
         .stop-nav-btn {
             background: #e31937;
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 12px;
-            font-size: 13px;
+            padding: 5px 8px;
+            border-radius: 8px;
+            font-size: 10px;
             font-weight: 700;
             cursor: pointer;
         }
@@ -424,45 +455,180 @@ Title: index.html
             border: none !important;
         }
         .user-cursor {
-            width: 0;
-            height: 0;
+            width: 78px;
+            height: 78px;
             position: relative;
-            filter: drop-shadow(0 0 6px rgba(62, 106, 225, 0.9));
-            transition: transform 0.15s linear;
-            transform-origin: 50% 65%;
+            transition: none;
+            transform-origin: 50% 50%;
+            line-height: 0;
+            pointer-events: none;
         }
-        .user-cursor::before {
-            content: '';
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -70%);
-            width: 0;
-            height: 0;
-            border-left: 12px solid transparent;
-            border-right: 12px solid transparent;
-            border-bottom: 28px solid #3e6ae1;
-        }
-        .user-cursor::after {
-            content: '';
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -55%);
-            width: 0;
-            height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-bottom: 12px solid #ffffff;
+        .user-cursor img {
+            width: 78px;
+            height: 78px;
+            object-fit: contain;
+            display: block;
+            mix-blend-mode: multiply;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
         }
         .map-rotating .leaflet-marker-icon:not(.user-cursor-marker) {
             transition: transform 0.15s linear;
         }
+
+        .sim-panel {
+            position: fixed;
+            left: 12px;
+            bottom: 110px;
+            z-index: 2100;
+            width: 248px;
+            max-height: 72vh;
+            overflow-y: auto;
+            background: rgba(26, 26, 26, 0.96);
+            border: 1px solid var(--tesla-light-gray);
+            border-radius: 12px;
+            padding: 10px;
+            backdrop-filter: blur(10px);
+        }
+        .sim-panel.hidden { display: none !important; }
+        .sim-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            color: var(--tesla-text-dim);
+            margin-bottom: 8px;
+        }
+        .sim-title span { color: #4caf50; }
+        .sim-row {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 6px;
+        }
+        .sim-row:last-child { margin-bottom: 0; }
+        .sim-btn {
+            flex: 1;
+            border: 1px solid var(--tesla-light-gray);
+            background: var(--tesla-gray);
+            color: var(--tesla-text);
+            border-radius: 6px;
+            padding: 7px 4px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .sim-btn.active {
+            background: var(--tesla-blue);
+            border-color: var(--tesla-blue);
+            color: white;
+        }
+        .sim-btn.play { background: #4caf50; border-color: #4caf50; color: white; }
+        .sim-btn.warn { background: #ff9800; border-color: #ff9800; color: white; }
+        .sim-btn.save { background: var(--tesla-blue); border-color: var(--tesla-blue); color: white; }
+        .sim-btn.ghost { font-size: 10px; color: var(--tesla-text-dim); }
+        .sim-field {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+        .sim-field label {
+            font-size: 10px;
+            color: var(--tesla-text-dim);
+            width: 72px;
+            flex-shrink: 0;
+        }
+        .sim-field input[type="number"] {
+            width: 58px;
+            background: var(--tesla-gray);
+            border: 1px solid var(--tesla-light-gray);
+            border-radius: 6px;
+            color: var(--tesla-text);
+            font-size: 12px;
+            font-weight: 700;
+            padding: 5px 6px;
+            outline: none;
+        }
+        .sim-field input[type="range"] {
+            flex: 1;
+            min-width: 0;
+            accent-color: var(--tesla-blue);
+        }
+        .btn.sim-on {
+            background: #4caf50;
+            color: white;
+            border-color: #4caf50;
+        }
+        #simToggleBtn { display: none; }
+        body.dev-mode #simToggleBtn { display: block; }
+
+        .logo { cursor: default; user-select: none; }
+
+        .dev-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 4000;
+            background: rgba(0, 0, 0, 0.72);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .dev-modal.hidden { display: none !important; }
+        .dev-card {
+            width: 280px;
+            background: var(--tesla-dark-gray);
+            border: 1px solid var(--tesla-light-gray);
+            border-radius: 16px;
+            padding: 20px 18px 16px;
+            text-align: center;
+        }
+        .dev-card h3 {
+            font-size: 14px;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+        .dev-card p {
+            font-size: 11px;
+            color: var(--tesla-text-dim);
+            margin-bottom: 14px;
+        }
+        .dev-dots {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .dev-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 1px solid var(--tesla-light-gray);
+            background: transparent;
+        }
+        .dev-dot.filled { background: var(--tesla-blue); border-color: var(--tesla-blue); }
+        .dev-pad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        .dev-key {
+            height: 44px;
+            border-radius: 8px;
+            border: 1px solid var(--tesla-light-gray);
+            background: var(--tesla-gray);
+            color: var(--tesla-text);
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .dev-key:active { transform: scale(0.96); }
+        .dev-key.ghost { color: var(--tesla-text-dim); font-size: 12px; }
     </style>
 </head>
 <body>
     <div class="header">
-        <div class="logo">🚗 TESLA</div>
+        <div class="logo" id="logoBtn">🚗 TESLA</div>
         <div class="data-badge">🧭 COMPASS NAV</div>
         <div style="display: flex; align-items: center;">
             <span id="speed" class="speed">0</span>
@@ -470,7 +636,9 @@ Title: index.html
         </div>
     </div>
     <div class="map-stage" id="mapStage">
-        <div id="map"></div>
+        <div class="map-camera" id="mapCamera">
+            <div id="map"></div>
+        </div>
     </div>
     
     <!-- Compass controls -->
@@ -526,6 +694,24 @@ Title: index.html
             </div>
             
             <div class="traffic-toggle">
+                <span class="traffic-label">🎨 Style:</span>
+                <div class="traffic-buttons">
+                    <button class="style-btn" data-style="osm" title="Full OpenStreetMap detail">OSM</button>
+                    <button class="style-btn active" data-style="clean" title="Clean roads, fewer labels">Clean</button>
+                    <button class="style-btn" data-style="simple" title="Light map, minimal clutter">Simple</button>
+                </div>
+            </div>
+            
+            <div class="traffic-toggle">
+                <span class="traffic-label">🗺️ Load:</span>
+                <div class="traffic-buttons">
+                    <button class="quality-btn" data-quality="low" title="Blurrier map, least data">Low</button>
+                    <button class="quality-btn" data-quality="med" title="Balanced tiles and data">Med</button>
+                    <button class="quality-btn active" data-quality="high" title="Load extra tiles, fewer gaps">High</button>
+                </div>
+            </div>
+            
+            <div class="traffic-toggle">
                 <span class="traffic-label">🚦 Traffic:</span>
                 <div class="traffic-buttons">
                     <button class="traffic-btn" data-multiplier="1">None</button>
@@ -539,7 +725,81 @@ Title: index.html
         
         <div class="button-group">
             <button id="locateBtn" class="btn btn-secondary">📍 GPS</button>
+            <button id="simToggleBtn" class="btn btn-secondary hidden">🎮 SIM</button>
             <button id="clearBtn" class="btn btn-secondary">✖️ Clear</button>
+        </div>
+    </div>
+
+    <div id="simPanel" class="sim-panel hidden">
+        <div class="sim-title">DRIVE SIM <span id="simState">paused</span></div>
+        <div class="sim-row">
+            <button id="simPlayBtn" class="sim-btn play">▶ Play</button>
+            <button id="simPauseBtn" class="sim-btn">⏸</button>
+            <button id="simResetBtn" class="sim-btn">↺</button>
+        </div>
+        <div class="sim-row">
+            <button class="sim-btn sim-speed-btn" data-sim-speed="20">20</button>
+            <button class="sim-btn sim-speed-btn active" data-sim-speed="50">50</button>
+            <button class="sim-btn sim-speed-btn" data-sim-speed="90">90</button>
+        </div>
+        <div class="sim-row">
+            <button id="simDemoBtn" class="sim-btn">Demo route</button>
+            <button id="simDeviateBtn" class="sim-btn warn">Off-route</button>
+        </div>
+        <div class="sim-title" style="margin-top:8px;">CAMERA</div>
+        <div class="sim-field">
+            <label>Up/Down</label>
+            <input type="range" data-cam="height" min="-60" max="60" step="0.1" value="-2.3">
+            <input type="number" data-cam="height" min="-60" max="60" step="0.1" value="-2.3">
+        </div>
+        <div class="sim-field">
+            <label>Left/Right</label>
+            <input type="range" data-cam="x" min="-60" max="60" step="0.1" value="-14.6">
+            <input type="number" data-cam="x" min="-60" max="60" step="0.1" value="-14.6">
+        </div>
+        <div class="sim-field">
+            <label>Angle</label>
+            <input type="range" data-cam="angle" min="0" max="70" step="0.1" value="56.4">
+            <input type="number" data-cam="angle" min="0" max="70" step="0.1" value="56.4">
+        </div>
+        <div class="sim-field">
+            <label>Zoom</label>
+            <input type="range" data-cam="zoom" min="12" max="24" step="0.1" value="18.8">
+            <input type="number" data-cam="zoom" min="12" max="24" step="0.1" value="18.8">
+        </div>
+        <div class="sim-row">
+            <button id="camSaveBtn" class="sim-btn save">Save cam</button>
+            <button id="camResetBtn" class="sim-btn">Reset cam</button>
+        </div>
+        <div class="sim-row">
+            <button id="simExitDevBtn" class="sim-btn ghost">Exit developer</button>
+        </div>
+    </div>
+
+    <div id="devModal" class="dev-modal hidden">
+        <div class="dev-card">
+            <h3>DEVELOPER MODE</h3>
+            <p>Enter passcode</p>
+            <div class="dev-dots" id="devDots">
+                <div class="dev-dot"></div>
+                <div class="dev-dot"></div>
+                <div class="dev-dot"></div>
+                <div class="dev-dot"></div>
+            </div>
+            <div class="dev-pad" id="devPad">
+                <button class="dev-key" data-key="1">1</button>
+                <button class="dev-key" data-key="2">2</button>
+                <button class="dev-key" data-key="3">3</button>
+                <button class="dev-key" data-key="4">4</button>
+                <button class="dev-key" data-key="5">5</button>
+                <button class="dev-key" data-key="6">6</button>
+                <button class="dev-key" data-key="7">7</button>
+                <button class="dev-key" data-key="8">8</button>
+                <button class="dev-key" data-key="9">9</button>
+                <button class="dev-key ghost" data-key="cancel">Cancel</button>
+                <button class="dev-key" data-key="0">0</button>
+                <button class="dev-key ghost" data-key="del">⌫</button>
+            </div>
         </div>
     </div>
     
@@ -573,8 +833,22 @@ Title: index.html
                 this.compassMode = false;
                 this.orientationSupported = false;
                 this.lastPos = null;
-                this.driveZoom = 19;
-                this.supportsRotate = typeof L.Map.prototype.setBearing === 'function';
+                this.driveZoom = 18.8;
+                this.camLookAhead = 18;
+                this.camDefaults = {
+                    angle: 56.4, x: -14.6, height: -2.3, zoom: 18.8
+                };
+                this.mapQuality = 'high';
+                this.mapStyle = 'clean';
+                try {
+                    const savedQ = localStorage.getItem('tesla_map_quality');
+                    if (savedQ === 'low' || savedQ === 'med' || savedQ === 'high') this.mapQuality = savedQ;
+                    const savedS = localStorage.getItem('tesla_map_style');
+                    if (savedS === 'osm' || savedS === 'clean' || savedS === 'simple') this.mapStyle = savedS;
+                } catch (_) {}
+                this._lastGoodBearing = null;
+                this._headingAt = 0;
+                this.supportsRotate = false;
                 
                 // Remaining route (trim passed segment)
                 this.routeCoords = [];
@@ -586,6 +860,20 @@ Title: index.html
                 this.lastRerouteAt = 0;
                 this.offRouteLimitM = 10; // auto-reroute after ~10m deviation
                 this.baseTileLayer = null;
+
+                // Drive simulator (debug without real GPS movement)
+                this.simulating = false;
+                this.simTimer = null;
+                this.simSpeedKmh = 50;
+                this.simIndex = 0;
+                this.simT = 0;
+                this.simOffRoute = false;
+                this.simHeading = 0;
+                this.lastSimTick = 0;
+                this.developerMode = false;
+                this.devPasscode = '2580';
+                this.devPin = '';
+                this.logoTaps = [];
                 
                 this.init();
             }
@@ -594,32 +882,117 @@ Title: index.html
                 const mapOpts = {
                     zoomControl: true,
                     attributionControl: false,
-                    maxZoom: 19
+                    maxZoom: 22,
+                    zoomSnap: 0.1,
+                    zoomDelta: 0.1,
+                    fadeAnimation: false,
+                    markerZoomAnimation: false
                 };
-                if (this.supportsRotate) {
-                    mapOpts.rotate = true;
-                    mapOpts.bearing = 0;
-                    mapOpts.rotateControl = false;
-                    mapOpts.touchRotate = false;
-                }
                 
                 this.map = L.map('map', mapOpts).setView([40.1872, 44.5152], 12);
-                
-                this.baseTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap',
-                    maxZoom: 19,
-                    keepBuffer: 24,
-                    updateWhenIdle: false,
-                    updateWhenZooming: true,
-                    updateInterval: 100
-                }).addTo(this.map);
+                this.applyMapQuality(this.mapQuality, true);
                 
                 this.startGPS();
-                this.initCompass();
                 this.initControls();
+                this.restoreDeveloperMode();
                 this.notify('Ready! 🚗', 'success');
             }
             
+            applyMapQuality(level, silent = false) {
+                const presets = {
+                    low:  { keepBuffer: 6,  maxNativeZoom: 14, updateWhenIdle: true,  updateInterval: 400, size: 280 },
+                    med:  { keepBuffer: 16, maxNativeZoom: 17, updateWhenIdle: false, updateInterval: 200, size: 420 },
+                    high: { keepBuffer: 28, maxNativeZoom: 19, updateWhenIdle: false, updateInterval: 80,  size: 560 }
+                };
+                const styles = {
+                    osm: {
+                        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        maxNative: 19,
+                        subdomains: 'abc',
+                        attrib: '© OpenStreetMap'
+                    },
+                    clean: {
+                        url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+                        maxNative: 20,
+                        subdomains: 'abcd',
+                        attrib: '© OpenStreetMap © CARTO'
+                    },
+                    simple: {
+                        url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                        maxNative: 20,
+                        subdomains: 'abcd',
+                        attrib: '© OpenStreetMap © CARTO'
+                    }
+                };
+                const q = presets[level] || presets.high;
+                this.mapQuality = presets[level] ? level : 'high';
+                const style = styles[this.mapStyle] || styles.clean;
+                this.mapStyle = styles[this.mapStyle] ? this.mapStyle : 'clean';
+
+                if (this.baseTileLayer) {
+                    this.map.removeLayer(this.baseTileLayer);
+                }
+                this.baseTileLayer = L.tileLayer(style.url, {
+                    attribution: style.attrib,
+                    subdomains: style.subdomains,
+                    maxZoom: 22,
+                    maxNativeZoom: Math.min(q.maxNativeZoom, style.maxNative),
+                    keepBuffer: q.keepBuffer,
+                    updateWhenIdle: q.updateWhenIdle,
+                    updateWhenZooming: false,
+                    updateInterval: q.updateInterval,
+                    detectRetina: false
+                }).addTo(this.map);
+
+                this.applyDriveMapSize(q.size);
+
+                document.querySelectorAll('.quality-btn').forEach((btn) => {
+                    btn.classList.toggle('active', btn.dataset.quality === this.mapQuality);
+                });
+                document.querySelectorAll('.style-btn').forEach((btn) => {
+                    btn.classList.toggle('active', btn.dataset.style === this.mapStyle);
+                });
+                try {
+                    localStorage.setItem('tesla_map_quality', this.mapQuality);
+                    localStorage.setItem('tesla_map_style', this.mapStyle);
+                } catch (_) {}
+                if (!silent) {
+                    const qLabel = this.mapQuality === 'low' ? 'Low data' : this.mapQuality === 'high' ? 'High detail' : 'Balanced';
+                    const sLabel = this.mapStyle === 'osm' ? 'OSM' : this.mapStyle === 'simple' ? 'Simple' : 'Clean';
+                    this.notify('🗺️ ' + sLabel + ' · ' + qLabel, 'info');
+                }
+                if (this.isNavigating) {
+                    setTimeout(() => {
+                        this.refreshTiles();
+                        this.applyDriveView(false);
+                    }, 50);
+                }
+            }
+
+            applyDriveMapSize(sizePct) {
+                const S = sizePct;
+                const left = 50 - S / 2;
+                const top = 50 - S / 2;
+                const mapEl = document.getElementById('map');
+                if (!mapEl) return;
+                mapEl.style.setProperty('--map-load-size', S + '%');
+                mapEl.style.setProperty('--map-load-left', left + '%');
+                mapEl.style.setProperty('--map-load-top', top + '%');
+            }
+
+            camEl() {
+                return document.getElementById('mapCamera') || document.getElementById('map');
+            }
+
+            setMapQuality(level) {
+                this.applyMapQuality(level, false);
+            }
+
+            setMapStyle(style) {
+                this.mapStyle = style;
+                this.applyMapQuality(this.mapQuality, false);
+            }
+
             initCompass() {
                 if (window.DeviceOrientationEvent) {
                     if (typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -664,8 +1037,8 @@ Title: index.html
                     }
                     
                     if (heading !== null) {
-                        // Device compass only when not in active drive nav
-                        if (!this.isNavigating && this.speed < 5) {
+                        // Never use the phone compass while following a route.
+                        if (!this.simulating && !this.isNavigating && !this.compassMode && this.speed < 5) {
                             this.setHeading(heading);
                         }
                     }
@@ -688,32 +1061,57 @@ Title: index.html
             }
             
             rotatePaneToHeading(heading) {
-                // Proper Leaflet rotate loads tiles for corners (no black gaps).
-                if (this.supportsRotate && typeof this.map.setBearing === 'function') {
-                    this.map.setBearing(heading);
+                heading = ((heading % 360) + 360) % 360;
+                const target = -heading;
+                if (this._yawCss == null) this._yawCss = target;
+                let delta = target - this._yawCss;
+                while (delta > 180) delta -= 360;
+                while (delta < -180) delta += 360;
+                this._yawCss += delta;
+                const camEl = this.camEl();
+                if (camEl) {
+                    camEl.style.setProperty('--route-yaw', `${this._yawCss}deg`);
                 }
+                this._lastBearing = heading;
                 this.updateCursorRotation();
-                if (this.isNavigating) this.refreshTiles();
             }
             
             updateCursorRotation() {
                 const cursor = document.querySelector('.user-cursor');
                 if (!cursor) return;
-                
-                // Navigating heading-up: tip points forward (screen up).
-                const angle = (this.compassMode && this.isNavigating) ? 0 : this.heading;
-                cursor.style.transform = `rotate(${angle}deg)`;
+                // Map yaws by -heading; counter-rotate the car so it stays
+                // screen-upright (rear view) and drives straight up the route.
+                cursor.style.transform = `rotate(${this.heading}deg)`;
             }
             
             setHeading(heading, options = {}) {
                 if (heading === null || heading === undefined || Number.isNaN(heading)) return;
                 
                 heading = ((heading % 360) + 360) % 360;
+
+                if (options.force) {
+                    this.heading = heading;
+                    this._headingAt = performance.now();
+                    this.updateCompassDisplay();
+                    if (this.compassMode && this.isNavigating) this.rotatePaneToHeading(this.heading);
+                    else this.updateCursorRotation();
+                    return;
+                }
                 
-                const ease = options.snap ? 0.85 : (this.isNavigating ? 0.55 : 0.35);
                 let delta = heading - this.heading;
                 if (delta > 180) delta -= 360;
                 if (delta < -180) delta += 360;
+
+                // One-frame reverse along a noisy polyline — keep the current view.
+                if (Math.abs(delta) > 120) return;
+
+                const now = performance.now();
+                const dt = Math.min(0.2, Math.max(0.016, (now - (this._headingAt || now)) / 1000));
+                this._headingAt = now;
+                const maxStep = (this.simulating ? 140 : 90) * dt;
+                if (Math.abs(delta) > maxStep) delta = Math.sign(delta) * maxStep;
+
+                const ease = this.isNavigating ? 0.45 : (options.snap ? 1 : 0.35);
                 this.heading = ((this.heading + delta * ease) % 360 + 360) % 360;
                 
                 this.updateCompassDisplay();
@@ -743,7 +1141,24 @@ Title: index.html
             }
             
             lookAheadMeters() {
-                return Math.min(160, Math.max(55, 50 + this.speed * 1.4));
+                return Math.min(140, Math.max(70, 70 + this.speed * 0.9));
+            }
+
+            pointAlongRoute(meters) {
+                if (!this.routeCoords.length) return this.pointAhead(meters);
+                const startIdx = Math.min(this.routeProgressIndex, this.routeCoords.length - 1);
+                let remaining = meters;
+                let from = this.currentPos || this.routeCoords[startIdx];
+                for (let i = startIdx; i < this.routeCoords.length - 1 && remaining > 0; i++) {
+                    const to = this.routeCoords[i + 1];
+                    const seg = this.calculateDistance(from, to) * 1000;
+                    if (seg >= remaining) {
+                        return this.interpolate(from, to, remaining / Math.max(seg, 0.01));
+                    }
+                    remaining -= seg;
+                    from = to;
+                }
+                return this.routeCoords[this.routeCoords.length - 1];
             }
             
             setDrive3D(enabled) {
@@ -773,48 +1188,69 @@ Title: index.html
             }
             
             getRouteAheadBearing() {
-                if (!this.routeCoords.length) return null;
-                const i = Math.min(this.routeProgressIndex, this.routeCoords.length - 1);
-                const a = this.routeCoords[i];
-                const b = this.routeCoords[Math.min(i + 4, this.routeCoords.length - 1)];
-                if (!a || !b || (a[0] === b[0] && a[1] === b[1])) return null;
-                return this.bearingBetween(a, b);
+                if (!this.routeCoords.length) {
+                    if (this.currentPos && this.destinationPos) {
+                        return this.bearingBetween(this.currentPos, this.destinationPos);
+                    }
+                    return null;
+                }
+                if (!this.currentPos) return null;
+
+                const coords = this.routeCoords;
+                const start = Math.max(0, (this.routeProgressIndex || 0) - 2);
+                const last = Math.min(coords.length - 2, start + 40);
+                let bestDist = Infinity;
+                let bestIdx = start;
+
+                for (let i = start; i <= last; i++) {
+                    const proj = this.projectOnSegment(this.currentPos, coords[i], coords[i + 1]);
+                    if (proj.dist < bestDist) {
+                        bestDist = proj.dist;
+                        bestIdx = i;
+                    }
+                }
+
+                let i = bestIdx;
+                while (i < coords.length - 2 && this.calculateDistance(coords[i], coords[i + 1]) * 1000 < 2) {
+                    i += 1;
+                }
+                const bearing = this.bearingBetween(coords[i], coords[i + 1]);
+                if (this._lastGoodBearing != null) {
+                    let d = bearing - this._lastGoodBearing;
+                    if (d > 180) d -= 360;
+                    if (d < -180) d += 360;
+                    if (Math.abs(d) > 120) return this._lastGoodBearing;
+                }
+                this._lastGoodBearing = bearing;
+                return bearing;
+            }
+
+            projectOnSegment(p, a, b) {
+                const ax = a[1], ay = a[0], bx = b[1], by = b[0], px = p[1], py = p[0];
+                const dx = bx - ax, dy = by - ay;
+                const len2 = dx * dx + dy * dy;
+                let t = len2 < 1e-18 ? 0 : ((px - ax) * dx + (py - ay) * dy) / len2;
+                t = Math.max(0, Math.min(1, t));
+                const q = [ay + t * dy, ax + t * dx];
+                return { dist: this.calculateDistance(p, q) * 1000, t, q };
             }
             
             applyDriveView(animate = false) {
                 if (!this.currentPos) return;
                 
                 const zoom = this.driveZoom;
-                const ahead = this.pointAhead(this.lookAheadMeters()) || this.currentPos;
+                // Stay locked on the car. A short look-ahead along CURRENT heading
+                // (not around the next corner) keeps the camera from swinging
+                // to a side street when the route turns.
+                const look = (this.camLookAhead != null) ? this.camLookAhead : 18;
+                const focus = this.pointAhead(look) || this.currentPos;
                 
-                this.map.setView(ahead, zoom, { animate: !!animate });
+                this.map.setView(focus, zoom, { animate: false });
                 
                 if (this.compassMode) {
                     this.rotatePaneToHeading(this.heading);
                 }
                 this.updateCursorRotation();
-                this.refreshTiles();
-                
-                clearTimeout(this._driveViewTimer);
-                clearTimeout(this._driveViewTimer2);
-                this._driveViewTimer = setTimeout(() => {
-                    if (!this.isNavigating || !this.currentPos) return;
-                    const focus = this.pointAhead(this.lookAheadMeters()) || this.currentPos;
-                    if (this.map.getZoom() < zoom) this.map.setZoom(zoom, { animate: false });
-                    this.map.panTo(focus, { animate: false });
-                    if (this.compassMode) this.rotatePaneToHeading(this.heading);
-                    this.updateCursorRotation();
-                    this.refreshTiles();
-                }, 120);
-                this._driveViewTimer2 = setTimeout(() => {
-                    if (!this.isNavigating || !this.currentPos) return;
-                    const focus = this.pointAhead(this.lookAheadMeters()) || this.currentPos;
-                    this.map.setZoom(zoom, { animate: false });
-                    this.map.panTo(focus, { animate: false });
-                    if (this.compassMode) this.rotatePaneToHeading(this.heading);
-                    this.updateCursorRotation();
-                    this.refreshTiles();
-                }, 450);
             }
             
             trimPassedRoute() {
@@ -887,15 +1323,16 @@ Title: index.html
             
             async toggleCompassMode() {
                 if (!this.compassMode) {
-                    // Turning ON compass mode
-                    if (!this.orientationSupported) {
-                        const granted = await this.requestOrientationPermission();
-                        if (!granted) return;
-                    }
-                    
                     this.compassMode = true;
                     document.getElementById('compassBtn').classList.add('active');
-                    this.notify('🧭 Heading mode ON', 'success');
+                    if (this.isNavigating) {
+                        const rb = this.getRouteAheadBearing();
+                        if (rb !== null) this.setHeading(rb, { snap: true, force: true });
+                        this.rotatePaneToHeading(this.heading);
+                        this.notify('🧭 Looking along your route', 'success');
+                    } else {
+                        this.notify('🧭 Heading mode ON', 'success');
+                    }
                 } else {
                     // Turning OFF compass mode
                     this.compassMode = false;
@@ -906,19 +1343,18 @@ Title: index.html
             }
             
             resetToNorth() {
-                if (this.supportsRotate && typeof this.map.setBearing === 'function') {
-                    this.map.setBearing(0);
-                } else {
-                    const mapPane = this.map.getPanes().mapPane;
-                    if (mapPane) mapPane.style.transform = '';
-                }
-                
+                const camEl = this.camEl();
+                if (camEl) camEl.style.setProperty('--route-yaw', '0deg');
+                this._yawCss = 0;
+                this._lastBearing = 0;
+                this._lastGoodBearing = null;
                 this.updateCursorRotation();
                 this.notify('⬆️ Reset to North', 'info');
             }
             
             startGPS() {
                 if (!navigator.geolocation) {
+                    this.seedFallbackPosition();
                     this.notify('❌ GPS not available', 'error');
                     return;
                 }
@@ -937,6 +1373,7 @@ Title: index.html
                     },
                     (err) => {
                         console.error('GPS Error:', err);
+                        this.seedFallbackPosition();
                         this.notify('⚠️ GPS error', 'error');
                     },
                     options
@@ -944,6 +1381,7 @@ Title: index.html
                 
                 this.watchId = navigator.geolocation.watchPosition(
                     (pos) => {
+                        if (this.simulating) return;
                         console.log('GPS Update:', pos.coords.latitude.toFixed(6), pos.coords.longitude.toFixed(6), 'Nav:', this.isNavigating);
                         this.updatePosition(pos);
                     },
@@ -964,21 +1402,16 @@ Title: index.html
                     document.getElementById('speed').textContent = kmh;
                 }
                 
-                // Prefer GPS course / movement; when on-route also snap to road ahead
-                if (heading !== null && heading !== undefined && !Number.isNaN(heading) && speed > 0.8) {
-                    this.setHeading(heading, { snap: true });
+                // Always face the route you should drive — never the phone compass.
+                if (this.isNavigating) {
+                    const routeBearing = this.getRouteAheadBearing();
+                    if (routeBearing !== null) {
+                        this.setHeading(routeBearing, { snap: true });
+                    }
                 } else if (this.lastPos) {
                     const moved = this.calculateDistance(this.lastPos, this.currentPos) * 1000;
                     if (moved > 1.5) {
                         this.setHeading(this.bearingBetween(this.lastPos, this.currentPos), { snap: true });
-                    }
-                }
-                
-                if (this.isNavigating) {
-                    const routeBearing = this.getRouteAheadBearing();
-                    // Prefer road-ahead heading when we still have a route
-                    if (routeBearing !== null && this.offRouteHits === 0) {
-                        this.setHeading(routeBearing, { snap: false });
                     }
                 }
                 this.lastPos = [...this.currentPos];
@@ -987,9 +1420,9 @@ Title: index.html
                 if (!this.userMarker) {
                     this.userMarker = L.marker(this.currentPos, {
                         icon: L.divIcon({
-                            html: '<div class="user-cursor"></div>',
-                            iconSize: [28, 36],
-                            iconAnchor: [14, 24],
+                            html: `<div class="user-cursor">${this.teslaCarHtml()}</div>`,
+                            iconSize: [78, 78],
+                            iconAnchor: [39, 52],
                             className: 'user-cursor-marker'
                         }),
                         zIndexOffset: 1000,
@@ -1025,9 +1458,10 @@ Title: index.html
                 document.getElementById('navDistance').textContent = distance.toFixed(1) + ' km';
                 this.updateTurnInstruction(distance);
                 
-                if (distance < 0.05) {
+                if (distance < 0.05 && !this.simulating) {
                     this.notify('🎯 You have arrived!', 'success');
                     setTimeout(() => {
+                        if (this.simulating) return;
                         this.stopNavigation();
                         this.clear();
                     }, 3000);
@@ -1114,6 +1548,13 @@ Title: index.html
                     };
                 });
                 
+                document.querySelectorAll('.quality-btn').forEach(btn => {
+                    btn.onclick = () => this.setMapQuality(btn.dataset.quality);
+                });
+                document.querySelectorAll('.style-btn').forEach(btn => {
+                    btn.onclick = () => this.setMapStyle(btn.dataset.style);
+                });
+                
                 document.querySelectorAll('.traffic-btn').forEach(btn => {
                     btn.onclick = () => {
                         document.querySelectorAll('.traffic-btn').forEach(b => b.classList.remove('active'));
@@ -1132,7 +1573,121 @@ Title: index.html
                 document.getElementById('locateBtn').onclick = () => this.center();
                 document.getElementById('clearBtn').onclick = () => this.clear();
                 document.getElementById('startNavBtn').onclick = () => this.startNavigation();
-                document.getElementById('stopNavBtn').onclick = () => this.stopNavigation();
+                document.getElementById('stopNavBtn').onclick = () => {
+                    this.pauseSim();
+                    this.stopNavigation();
+                };
+
+                document.getElementById('simToggleBtn').onclick = () => this.toggleSimPanel();
+                document.getElementById('simPlayBtn').onclick = () => this.startSim();
+                document.getElementById('simPauseBtn').onclick = () => this.pauseSim();
+                document.getElementById('simResetBtn').onclick = () => this.resetSim();
+                document.getElementById('simDemoBtn').onclick = () => this.loadDemoRoute();
+                document.getElementById('simDeviateBtn').onclick = () => this.deviateOffRoute();
+                document.querySelectorAll('.sim-speed-btn').forEach(btn => {
+                    btn.onclick = () => {
+                        document.querySelectorAll('.sim-speed-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        this.simSpeedKmh = parseInt(btn.dataset.simSpeed, 10);
+                    };
+                });
+                document.getElementById('simExitDevBtn').onclick = () => this.lockDeveloperMode();
+                document.getElementById('logoBtn').onclick = () => this.onLogoTap();
+                document.getElementById('devPad').onclick = (e) => {
+                    const key = e.target.closest('.dev-key');
+                    if (key) this.onDevKey(key.dataset.key);
+                };
+                document.getElementById('camSaveBtn').onclick = () => this.saveCamera();
+                document.getElementById('camResetBtn').onclick = () => this.resetCamera();
+                this.bindCameraControls();
+                this.restoreCamera();
+            }
+
+            bindCameraControls() {
+                document.querySelectorAll('[data-cam]').forEach((el) => {
+                    el.oninput = () => {
+                        const key = el.dataset.cam;
+                        const v = parseFloat(el.value);
+                        if (Number.isNaN(v)) return;
+                        document.querySelectorAll(`[data-cam="${key}"]`).forEach((n) => { n.value = v; });
+                        this.applyCamera();
+                    };
+                });
+            }
+
+            camValue(key, fallback) {
+                const el = document.querySelector(`input[type="number"][data-cam="${key}"]`);
+                const v = el ? parseFloat(el.value) : NaN;
+                return Number.isNaN(v) ? fallback : v;
+            }
+
+            currentCamera() {
+                const d = this.camDefaults;
+                return {
+                    angle: this.camValue('angle', d.angle),
+                    x: this.camValue('x', d.x),
+                    height: this.camValue('height', d.height),
+                    zoom: this.camValue('zoom', d.zoom)
+                };
+            }
+
+            writeCameraInputs(cam) {
+                if (!cam || typeof cam !== 'object') return;
+                ['angle', 'x', 'height', 'zoom'].forEach((key) => {
+                    if (cam[key] == null || Number.isNaN(Number(cam[key]))) return;
+                    document.querySelectorAll(`[data-cam="${key}"]`).forEach((el) => {
+                        el.value = cam[key];
+                    });
+                });
+            }
+
+            readSavedCamera() {
+                try {
+                    const cam = JSON.parse(localStorage.getItem('tesla_cam_saved') || 'null');
+                    if (cam && typeof cam === 'object') return cam;
+                } catch (_) {}
+                return null;
+            }
+
+            applyCamera() {
+                const cam = this.currentCamera();
+                this.driveZoom = Math.min(22, Math.max(12, cam.zoom));
+                const extra = Math.max(0, cam.zoom - 18);
+                const scale = 1.2 + extra * 0.35;
+
+                const camEl = this.camEl();
+                if (camEl) {
+                    camEl.style.setProperty('--cam-angle', cam.angle + 'deg');
+                    camEl.style.setProperty('--cam-x', cam.x + '%');
+                    camEl.style.setProperty('--cam-height', cam.height + '%');
+                    camEl.style.setProperty('--cam-scale', String(scale));
+                }
+
+                if (this.isNavigating && this.currentPos) this.applyDriveView(false);
+            }
+
+            saveCamera() {
+                const cam = this.currentCamera();
+                try {
+                    localStorage.setItem('tesla_cam_saved', JSON.stringify(cam));
+                } catch (_) {
+                    this.notify('❌ Could not save camera', 'error');
+                    return;
+                }
+                this.applyCamera();
+                this.notify('💾 Camera saved', 'success');
+            }
+
+            restoreCamera() {
+                const saved = this.readSavedCamera();
+                if (saved) this.writeCameraInputs(saved);
+                this.applyCamera();
+            }
+
+            resetCamera() {
+                this.writeCameraInputs(this.camDefaults);
+                this.applyCamera();
+                this.notify('Camera reset to default', 'info');
             }
             
             async calculateRoute() {
@@ -1246,6 +1801,7 @@ Title: index.html
                         this.routeCoords = (route.coordinates || []).map(c => [c.lat, c.lng]);
                         this.routeProgressIndex = 0;
                         this.offRouteHits = 0;
+                        this.syncSimToRoute();
                         
                         if (this.remainingLine) this.map.removeLayer(this.remainingLine);
                         this.remainingLine = L.polyline(this.routeCoords, {
@@ -1267,8 +1823,9 @@ Title: index.html
                             this.notify('✅ Route ready! Tap START', 'success');
                         } else {
                             if (this.isNavigating) {
+                                this._lastGoodBearing = null;
                                 const rb = this.getRouteAheadBearing();
-                                if (rb !== null) this.setHeading(rb, { snap: true });
+                                if (rb !== null) this.setHeading(rb, { snap: true, force: true });
                                 this.trimPassedRoute();
                                 this.applyDriveView(false);
                                 this.notify('✅ New route ready', 'success');
@@ -1314,22 +1871,20 @@ Title: index.html
                 document.getElementById('turnInstruction').classList.remove('hidden');
                 document.getElementById('controlPanel').classList.add('hidden-ui');
                 
-                if (!this.orientationSupported) {
-                    await this.requestOrientationPermission();
-                }
                 this.compassMode = true;
                 document.getElementById('compassBtn').classList.add('active');
                 
-                // Align to road ahead immediately
+                // Face the road you should follow, not the phone's compass.
+                this._lastGoodBearing = null;
                 const rb = this.getRouteAheadBearing();
-                if (rb !== null) this.setHeading(rb, { snap: true });
+                if (rb !== null) this.setHeading(rb, { snap: true, force: true });
                 
                 this.setDrive3D(true);
                 this.trimPassedRoute();
                 this.applyDriveView(true);
                 
                 this.updateNavigationInfo();
-                this.notify('🧭 3D drive view + look-ahead', 'success');
+                this.notify('🧭 Looking straight along your route', 'success');
             }
             
             stopNavigation() {
@@ -1399,6 +1954,313 @@ Title: index.html
                 this.notify('✖️ Cleared', 'info');
             }
             
+            restoreDeveloperMode() {
+                let unlocked = false;
+                try { unlocked = sessionStorage.getItem('tesla_dev_mode') === '1'; } catch (_) {}
+                this.setDeveloperMode(unlocked, { quiet: true });
+            }
+
+            onLogoTap() {
+                const now = Date.now();
+                this.logoTaps = this.logoTaps.filter(t => now - t < 2500);
+                this.logoTaps.push(now);
+                if (this.logoTaps.length >= 5) {
+                    this.logoTaps = [];
+                    if (this.developerMode) {
+                        this.lockDeveloperMode();
+                    } else {
+                        this.openDevModal();
+                    }
+                }
+            }
+
+            openDevModal() {
+                this.devPin = '';
+                this.updateDevDots();
+                document.getElementById('devModal').classList.remove('hidden');
+            }
+
+            closeDevModal() {
+                this.devPin = '';
+                this.updateDevDots();
+                document.getElementById('devModal').classList.add('hidden');
+            }
+
+            updateDevDots() {
+                document.querySelectorAll('#devDots .dev-dot').forEach((dot, i) => {
+                    dot.classList.toggle('filled', i < this.devPin.length);
+                });
+            }
+
+            onDevKey(key) {
+                if (key === 'cancel') {
+                    this.closeDevModal();
+                    return;
+                }
+                if (key === 'del') {
+                    this.devPin = this.devPin.slice(0, -1);
+                    this.updateDevDots();
+                    return;
+                }
+                if (!/^[0-9]$/.test(key) || this.devPin.length >= 4) return;
+                this.devPin += key;
+                this.updateDevDots();
+                if (this.devPin.length === 4) {
+                    if (this.devPin === this.devPasscode) {
+                        this.closeDevModal();
+                        this.setDeveloperMode(true);
+                    } else {
+                        this.devPin = '';
+                        this.updateDevDots();
+                        this.notify('❌ Wrong passcode', 'error');
+                    }
+                }
+            }
+
+            setDeveloperMode(enabled, options = {}) {
+                this.developerMode = !!enabled;
+                document.body.classList.toggle('dev-mode', this.developerMode);
+                const simBtn = document.getElementById('simToggleBtn');
+                simBtn.classList.toggle('hidden', !this.developerMode);
+                if (!this.developerMode) {
+                    this.pauseSim();
+                    document.getElementById('simPanel').classList.add('hidden');
+                    simBtn.classList.remove('sim-on');
+                    try { sessionStorage.removeItem('tesla_dev_mode'); } catch (_) {}
+                    if (!options.quiet) this.notify('Developer mode off', 'info');
+                } else {
+                    try { sessionStorage.setItem('tesla_dev_mode', '1'); } catch (_) {}
+                    if (!options.quiet) this.notify('🛠️ Developer mode on', 'success');
+                }
+            }
+
+            lockDeveloperMode() {
+                this.setDeveloperMode(false);
+            }
+
+            teslaCarHtml() {
+                return '<img src="tesla-car.jpg" alt="Tesla">';
+            }
+
+            fakeGeoPosition(latlng, speedMps, heading) {
+                return {
+                    coords: {
+                        latitude: latlng[0],
+                        longitude: latlng[1],
+                        accuracy: 5,
+                        altitude: null,
+                        altitudeAccuracy: null,
+                        heading: heading,
+                        speed: speedMps
+                    },
+                    timestamp: Date.now()
+                };
+            }
+
+            seedFallbackPosition() {
+                if (this.currentPos) return;
+                this.updatePosition(this.fakeGeoPosition([40.1776, 44.5126], 0, 0));
+                if (this.developerMode) {
+                    document.getElementById('fromInput').placeholder = 'From: SIM start';
+                }
+            }
+
+            toggleSimPanel() {
+                if (!this.developerMode) return;
+                const panel = document.getElementById('simPanel');
+                const btn = document.getElementById('simToggleBtn');
+                const open = panel.classList.contains('hidden');
+                panel.classList.toggle('hidden', !open);
+                btn.classList.toggle('sim-on', open);
+                if (open) this.seedFallbackPosition();
+            }
+
+            syncSimToRoute() {
+                if (!this.routeCoords.length) {
+                    this.simIndex = 0;
+                    this.simT = 0;
+                    return;
+                }
+                const origin = this.currentPos || this.routeCoords[0];
+                let closest = 0;
+                let closestDist = Infinity;
+                for (let i = 0; i < this.routeCoords.length; i++) {
+                    const d = this.calculateDistance(origin, this.routeCoords[i]);
+                    if (d < closestDist) {
+                        closestDist = d;
+                        closest = i;
+                    }
+                }
+                this.simIndex = Math.min(closest, this.routeCoords.length - 2);
+                this.simT = 0;
+                this.simOffRoute = false;
+            }
+
+            interpolate(a, b, t) {
+                return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+            }
+
+            offsetByMeters(latlng, headingDeg, meters) {
+                const R = 6371000;
+                const brng = headingDeg * Math.PI / 180;
+                const lat1 = latlng[0] * Math.PI / 180;
+                const lon1 = latlng[1] * Math.PI / 180;
+                const lat2 = Math.asin(Math.sin(lat1) * Math.cos(meters / R) +
+                    Math.cos(lat1) * Math.sin(meters / R) * Math.cos(brng));
+                const lon2 = lon1 + Math.atan2(
+                    Math.sin(brng) * Math.sin(meters / R) * Math.cos(lat1),
+                    Math.cos(meters / R) - Math.sin(lat1) * Math.sin(lat2)
+                );
+                return [lat2 * 180 / Math.PI, lon2 * 180 / Math.PI];
+            }
+
+            advanceAlongRoute(meters) {
+                if (!this.routeCoords.length || this.simIndex >= this.routeCoords.length - 1) {
+                    return this.currentPos;
+                }
+                let remaining = meters;
+                while (remaining > 0 && this.simIndex < this.routeCoords.length - 1) {
+                    const a = this.routeCoords[this.simIndex];
+                    const b = this.routeCoords[this.simIndex + 1];
+                    const segLen = Math.max(this.calculateDistance(a, b) * 1000, 0.01);
+                    const left = segLen * (1 - this.simT);
+                    if (remaining >= left) {
+                        remaining -= left;
+                        this.simIndex += 1;
+                        this.simT = 0;
+                    } else {
+                        this.simT += remaining / segLen;
+                        remaining = 0;
+                    }
+                }
+                if (this.simIndex >= this.routeCoords.length - 1) {
+                    return this.routeCoords[this.routeCoords.length - 1];
+                }
+                return this.interpolate(this.routeCoords[this.simIndex], this.routeCoords[this.simIndex + 1], this.simT);
+            }
+
+            setSimState(text) {
+                const el = document.getElementById('simState');
+                if (el) el.textContent = text;
+                const badge = document.querySelector('.data-badge');
+                if (badge) badge.textContent = this.simulating ? '🎮 SIM DRIVE' : '🧭 COMPASS NAV';
+            }
+
+            async startSim() {
+                if (!this.developerMode) return;
+                this.seedFallbackPosition();
+                if (!this.routeCoords.length) {
+                    this.notify('Set a destination (or Demo route), then Play', 'error');
+                    return;
+                }
+
+                this.simulating = true;
+                this.simOffRoute = false;
+                this.syncSimToRoute();
+                this.lastSimTick = performance.now();
+                this.setSimState('driving');
+                document.getElementById('simPanel').classList.remove('hidden');
+                document.getElementById('simToggleBtn').classList.add('sim-on');
+
+                if (!this.isNavigating) {
+                    await this.startNavigation();
+                }
+
+                if (this.simTimer) {
+                    cancelAnimationFrame(this.simTimer);
+                    this.simTimer = null;
+                }
+                this.lastSimTick = performance.now();
+                const loop = (now) => {
+                    if (!this.simulating) return;
+                    const dt = Math.min((now - this.lastSimTick) / 1000, 0.05);
+                    this.lastSimTick = now;
+                    this.simTick(dt);
+                    this.simTimer = requestAnimationFrame(loop);
+                };
+                this.simTimer = requestAnimationFrame(loop);
+                this.notify('🎮 Sim driving at ' + this.simSpeedKmh + ' km/h', 'success');
+            }
+
+            pauseSim() {
+                this.simulating = false;
+                if (this.simTimer) {
+                    cancelAnimationFrame(this.simTimer);
+                    this.simTimer = null;
+                }
+                this.setSimState('paused');
+            }
+
+            resetSim() {
+                this.pauseSim();
+                this.simOffRoute = false;
+                if (this.routeCoords.length) {
+                    this.simIndex = 0;
+                    this.simT = 0;
+                    this.routeProgressIndex = 0;
+                    const start = this.routeCoords[0];
+                    const heading = this.routeCoords[1] ? this.bearingBetween(this.routeCoords[0], this.routeCoords[1]) : 0;
+                    this.lastPos = null;
+                    this.updatePosition(this.fakeGeoPosition(start, 0, heading));
+                }
+                this.notify('↺ Sim reset to route start', 'info');
+            }
+
+            simTick(dt) {
+                if (!this.currentPos) return;
+                const speedMps = this.simSpeedKmh / 3.6;
+                const step = speedMps * dt;
+                let nextPos;
+                let heading = this.heading;
+
+                if (this.simOffRoute) {
+                    heading = this.simHeading;
+                    nextPos = this.offsetByMeters(this.currentPos, heading, step);
+                } else {
+                    nextPos = this.advanceAlongRoute(step);
+                    const nextPt = this.routeCoords[this.simIndex + 1];
+                    if (nextPt) {
+                        heading = this.bearingBetween(this.routeCoords[this.simIndex], nextPt);
+                    }
+                    const atEnd = this.simIndex >= this.routeCoords.length - 1;
+                    const remainingM = this.destinationPos
+                        ? this.calculateDistance(nextPos, this.destinationPos) * 1000
+                        : Infinity;
+                    if (atEnd && remainingM < 25) {
+                        this.pauseSim();
+                        this.notify('🎯 Sim reached destination', 'success');
+                    }
+                }
+
+                this.updatePosition(this.fakeGeoPosition(nextPos, speedMps, heading));
+            }
+
+            deviateOffRoute() {
+                if (!this.developerMode) return;
+                this.seedFallbackPosition();
+                if (!this.currentPos) return;
+                const sideHeading = (this.heading + 90) % 360;
+                const off = this.offsetByMeters(this.currentPos, sideHeading, 25);
+                this.simOffRoute = true;
+                this.simHeading = this.heading;
+                this.lastPos = null;
+                this.updatePosition(this.fakeGeoPosition(off, this.simSpeedKmh / 3.6, this.simHeading));
+                this.notify('↘ Off-route +25m — should reroute', 'info');
+            }
+
+            async loadDemoRoute() {
+                if (!this.developerMode) return;
+                this.pauseSim();
+                const start = [40.1776, 44.5126]; // Republic Square
+                const end = [40.1912, 44.5158];   // Cascade
+                this.lastPos = null;
+                this.updatePosition(this.fakeGeoPosition(start, 0, 0));
+                document.getElementById('fromInput').value = 'Republic Square';
+                document.getElementById('toInput').value = 'Cascade';
+                this.notify('📍 Demo: Republic Square → Cascade', 'info');
+                await this.createRoute(start, end);
+            }
+
             notify(msg, type) {
                 const note = document.getElementById('notification');
                 note.textContent = msg;
