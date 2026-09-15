@@ -466,14 +466,18 @@
             line-height: 0;
             pointer-events: none;
         }
-        .user-cursor img {
+        .user-cursor img,
+        .user-cursor svg {
             width: 78px;
             height: 78px;
-            object-fit: contain;
             display: block;
-            mix-blend-mode: multiply;
             filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
         }
+        .user-cursor img {
+            object-fit: contain;
+            mix-blend-mode: multiply;
+        }
+        .user-cursor svg { mix-blend-mode: normal; }
         .map-rotating .leaflet-marker-icon:not(.user-cursor-marker) {
             transition: transform 0.15s linear;
         }
@@ -529,7 +533,45 @@
         .sim-btn.play { background: #4caf50; border-color: #4caf50; color: white; }
         .sim-btn.warn { background: #ff9800; border-color: #ff9800; color: white; }
         .sim-btn.save { background: var(--tesla-blue); border-color: var(--tesla-blue); color: white; }
-        .sim-btn.ghost { font-size: 10px; color: var(--tesla-text-dim); }
+        .car-picker {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+        .car-opt {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            padding: 4px 2px 3px;
+            border: 1px solid var(--tesla-light-gray);
+            background: var(--tesla-gray);
+            border-radius: 8px;
+            color: var(--tesla-text-dim);
+            cursor: pointer;
+            min-width: 0;
+        }
+        .car-opt img, .car-opt svg {
+            width: 32px;
+            height: 32px;
+            display: block;
+            object-fit: contain;
+            pointer-events: none;
+        }
+        .car-opt img { mix-blend-mode: multiply; background: #fff; border-radius: 4px; }
+        .car-opt span {
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            white-space: nowrap;
+        }
+        .car-opt.active {
+            border-color: var(--tesla-blue);
+            background: rgba(62, 106, 225, 0.25);
+            color: white;
+            box-shadow: 0 0 0 1px var(--tesla-blue);
+        }
         .sim-field {
             display: flex;
             align-items: center;
@@ -749,7 +791,9 @@
             <button id="simDemoBtn" class="sim-btn">Demo route</button>
             <button id="simDeviateBtn" class="sim-btn warn">Off-route</button>
         </div>
-        <div class="sim-title" style="margin-top:8px;">CAMERA</div>
+        <div class="sim-title" style="margin-top:8px;">CAR ICON</div>
+        <div class="car-picker" id="carPicker"></div>
+        <div class="sim-title">CAMERA</div>
         <div class="sim-field">
             <label>Up/Down</label>
             <input type="range" data-cam="height" min="-60" max="60" step="0.1" value="-2.3">
@@ -841,6 +885,11 @@
                 this.camDefaults = {
                     angle: 56.4, x: -14.6, height: -2.3, zoom: 18.8
                 };
+                this.carStyle = 'photo';
+                try {
+                    const savedCar = localStorage.getItem('tesla_car_style');
+                    if (savedCar && ['photo', 'pulse', 'cyber', 'ember', 'halo'].includes(savedCar)) this.carStyle = savedCar;
+                } catch (_) {}
                 this.mapQuality = 'high';
                 this.mapStyle = 'clean';
                 try {
@@ -1434,7 +1483,7 @@
                 if (!this.userMarker) {
                     this.userMarker = L.marker(this.currentPos, {
                         icon: L.divIcon({
-                            html: `<div class="user-cursor">${this.teslaCarHtml()}</div>`,
+                            html: `<div class="user-cursor car-${this.carStyle}">${this.teslaCarHtml()}</div>`,
                             iconSize: [78, 78],
                             iconAnchor: [39, 52],
                             className: 'user-cursor-marker'
@@ -1615,6 +1664,7 @@
                 document.getElementById('camResetBtn').onclick = () => this.resetCamera();
                 this.bindCameraControls();
                 this.restoreCamera();
+                this.renderCarPicker();
             }
 
             bindCameraControls() {
@@ -2053,7 +2103,124 @@
             }
 
             teslaCarHtml() {
-                return '<img src="tesla-car.jpg" alt="Tesla">';
+                const pack = this.carCatalog('mark')[this.carStyle] || this.carCatalog('mark').photo;
+                return pack.html;
+            }
+
+            carCatalog(ns = 'c') {
+                return {
+                    photo: {
+                        name: 'Photo',
+                        html: '<img src="tesla-car.jpg" alt="Photo">'
+                    },
+                    pulse: {
+                        name: 'Pulse',
+                        html: `<svg viewBox="0 0 78 78" xmlns="http://www.w3.org/2000/svg" aria-label="Pulse">
+                            <defs>
+                              <radialGradient id="pg-${ns}" cx="50%" cy="58%" r="48%">
+                                <stop offset="0%" stop-color="#7aa2ff" stop-opacity="0.55"/>
+                                <stop offset="100%" stop-color="#3e6ae1" stop-opacity="0"/>
+                              </radialGradient>
+                            </defs>
+                            <circle cx="39" cy="44" r="28" fill="url(#pg-${ns})"/>
+                            <path d="M39 16 L58 52 H20 Z" fill="#3e6ae1" stroke="#d6e4ff" stroke-width="2" stroke-linejoin="round"/>
+                            <path d="M39 24 L51 48 H27 Z" fill="#0b1a3a"/>
+                            <circle cx="39" cy="40" r="3.2" fill="#8ec8ff"/>
+                          </svg>`
+                    },
+                    cyber: {
+                        name: 'Cyber',
+                        html: `<svg viewBox="0 0 78 78" xmlns="http://www.w3.org/2000/svg" aria-label="Cyber">
+                            <path d="M16 50 L24 28 H54 L62 50 Z" fill="#c5c8cc" stroke="#3a3d42" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M22 48 L28 32 H50 L56 48 Z" fill="#8e949c"/>
+                            <rect x="20" y="46" width="38" height="5" rx="1" fill="#111"/>
+                            <rect x="22" y="47.2" width="12" height="2.4" fill="#ff3b30"/>
+                            <rect x="44" y="47.2" width="12" height="2.4" fill="#ff3b30"/>
+                            <path d="M30 32 L39 22 L48 32 Z" fill="#6b7078"/>
+                            <rect x="18" y="50" width="8" height="6" rx="1" fill="#1a1a1a"/>
+                            <rect x="52" y="50" width="8" height="6" rx="1" fill="#1a1a1a"/>
+                          </svg>`
+                    },
+                    ember: {
+                        name: 'Ember',
+                        html: `<svg viewBox="0 0 78 78" xmlns="http://www.w3.org/2000/svg" aria-label="Ember">
+                            <defs>
+                              <linearGradient id="eg-${ns}" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#2a1114"/>
+                                <stop offset="100%" stop-color="#090607"/>
+                              </linearGradient>
+                            </defs>
+                            <ellipse cx="39" cy="56" rx="18" ry="4" fill="rgba(0,0,0,0.35)"/>
+                            <path d="M18 48 C20 30 28 22 39 22 C50 22 58 30 60 48 C58 54 48 58 39 58 C30 58 20 54 18 48Z" fill="url(#eg-${ns})" stroke="#ff4d2e" stroke-width="1.4"/>
+                            <path d="M24 36 C28 28 34 26 39 26 C44 26 50 28 54 36 Z" fill="#3a1518"/>
+                            <rect x="21" y="46" width="36" height="4" rx="2" fill="#ff2a1a"/>
+                            <rect x="23" y="47" width="32" height="2" rx="1" fill="#ffd0a8"/>
+                            <circle cx="24" cy="52" r="3" fill="#1a1a1a"/>
+                            <circle cx="54" cy="52" r="3" fill="#1a1a1a"/>
+                          </svg>`
+                    },
+                    halo: {
+                        name: 'Halo',
+                        html: `<svg viewBox="0 0 78 78" xmlns="http://www.w3.org/2000/svg" aria-label="Halo">
+                            <defs>
+                              <radialGradient id="hg-${ns}" cx="50%" cy="50%" r="50%">
+                                <stop offset="0%" stop-color="#fff4c2" stop-opacity="0.9"/>
+                                <stop offset="55%" stop-color="#ffcc33" stop-opacity="0.25"/>
+                                <stop offset="100%" stop-color="#ffcc33" stop-opacity="0"/>
+                              </radialGradient>
+                            </defs>
+                            <circle cx="39" cy="40" r="30" fill="url(#hg-${ns})"/>
+                            <circle cx="39" cy="40" r="16" fill="none" stroke="#ffe27a" stroke-width="2.4"/>
+                            <path d="M39 24 L50 48 L39 43 L28 48 Z" fill="#111" stroke="#ffe27a" stroke-width="1.6" stroke-linejoin="round"/>
+                            <circle cx="39" cy="36" r="2.6" fill="#ffe27a"/>
+                          </svg>`
+                    }
+                };
+            }
+
+            renderCarPicker() {
+                const wrap = document.getElementById('carPicker');
+                if (!wrap) return;
+                const catalog = this.carCatalog('pick');
+                wrap.innerHTML = Object.keys(catalog).map((id) => {
+                    const c = catalog[id];
+                    const on = id === this.carStyle ? ' active' : '';
+                    return `<button type="button" class="car-opt${on}" data-car="${id}" title="${c.name}">${c.html}<span>${c.name}</span></button>`;
+                }).join('');
+                wrap.onclick = (e) => {
+                    const btn = e.target.closest('[data-car]');
+                    if (btn) this.setCarStyle(btn.dataset.car);
+                };
+            }
+
+            setCarStyle(id) {
+                const catalog = this.carCatalog('pick');
+                if (!catalog[id]) return;
+                this.carStyle = id;
+                try { localStorage.setItem('tesla_car_style', id); } catch (_) {}
+                document.querySelectorAll('.car-opt').forEach((btn) => {
+                    btn.classList.toggle('active', btn.dataset.car === id);
+                });
+                this.applyCarIcon();
+                this.notify('🚗 Car: ' + catalog[id].name, 'success');
+            }
+
+            applyCarIcon() {
+                if (!this.userMarker) return;
+                const root = this.userMarker.getElement();
+                const cursor = root && root.querySelector('.user-cursor');
+                if (cursor) {
+                    cursor.innerHTML = this.teslaCarHtml();
+                    cursor.className = 'user-cursor car-' + this.carStyle;
+                } else {
+                    this.userMarker.setIcon(L.divIcon({
+                        html: `<div class="user-cursor car-${this.carStyle}">${this.teslaCarHtml()}</div>`,
+                        iconSize: [78, 78],
+                        iconAnchor: [39, 52],
+                        className: 'user-cursor-marker'
+                    }));
+                }
+                this.updateCursorRotation();
             }
 
             fakeGeoPosition(latlng, speedMps, heading) {
