@@ -500,6 +500,49 @@
             backdrop-filter: blur(10px);
         }
         .sim-panel.hidden { display: none !important; }
+        .sim-panel.minimized {
+            width: auto;
+            min-width: 160px;
+            max-height: none;
+            overflow: hidden;
+            bottom: 16px;
+            left: 12px;
+            padding: 4px;
+        }
+        .sim-panel.minimized .sim-body { display: none; }
+        .sim-panel.minimized .sim-min-btn { display: none; }
+        .sim-panel.minimized .sim-title { margin-bottom: 0; }
+        .sim-title-hit {
+            flex: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            background: none;
+            border: none;
+            color: inherit;
+            font: inherit;
+            letter-spacing: inherit;
+            cursor: pointer;
+            padding: 2px 4px;
+            text-align: left;
+        }
+        .sim-panel.minimized .sim-title-hit {
+            padding: 12px 14px;
+        }
+        .sim-min-btn {
+            width: 36px;
+            height: 36px;
+            flex-shrink: 0;
+            border: 1px solid var(--tesla-light-gray);
+            background: var(--tesla-gray);
+            color: var(--tesla-text);
+            border-radius: 8px;
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1;
+            cursor: pointer;
+        }
         .sim-title {
             display: flex;
             justify-content: space-between;
@@ -539,7 +582,7 @@
         .sim-btn.ghost { font-size: 13px; color: var(--tesla-text-dim); }
         .car-picker {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 4px;
             margin-bottom: 8px;
         }
@@ -780,16 +823,22 @@
     </div>
 
     <div id="simPanel" class="sim-panel hidden">
-        <div class="sim-title">DRIVE SIM <span id="simState">paused</span></div>
+        <div class="sim-title" id="simTitleBar">
+            <button type="button" class="sim-title-hit" id="simTabBtn">DRIVE SIM <span id="simState">paused</span></button>
+            <button type="button" class="sim-min-btn" id="simMinBtn" title="Minimize">–</button>
+        </div>
+        <div class="sim-body">
         <div class="sim-row">
             <button id="simPlayBtn" class="sim-btn play">▶ Play</button>
             <button id="simPauseBtn" class="sim-btn">⏸</button>
             <button id="simResetBtn" class="sim-btn">↺</button>
         </div>
         <div class="sim-row">
-            <button class="sim-btn sim-speed-btn" data-sim-speed="20">20</button>
-            <button class="sim-btn sim-speed-btn active" data-sim-speed="50">50</button>
-            <button class="sim-btn sim-speed-btn" data-sim-speed="90">90</button>
+            <button class="sim-btn sim-speed-btn" data-sim-speed="50">50</button>
+            <button class="sim-btn sim-speed-btn active" data-sim-speed="120">120</button>
+            <button class="sim-btn sim-speed-btn" data-sim-speed="250">250</button>
+            <button class="sim-btn sim-speed-btn warn" data-sim-speed="500">500</button>
+            <button class="sim-btn sim-speed-btn warn" data-sim-speed="900">MAX</button>
         </div>
         <div class="sim-row">
             <button id="simDemoBtn" class="sim-btn">Demo route</button>
@@ -814,6 +863,7 @@
         </div>
         <div class="sim-row">
             <button id="simExitDevBtn" class="sim-btn ghost">Exit developer</button>
+        </div>
         </div>
     </div>
 
@@ -879,10 +929,10 @@
                 this.camDefaults = {
                     angle: 56.4, zoom: 18.8
                 };
-                this.carStyle = 'photo';
+                this.carStyle = 'halo';
                 try {
                     const savedCar = localStorage.getItem('tesla_car_style');
-                    if (savedCar && ['photo', 'pulse', 'cyber', 'ember', 'halo'].includes(savedCar)) this.carStyle = savedCar;
+                    if (savedCar && ['pulse', 'cyber', 'ember', 'halo'].includes(savedCar)) this.carStyle = savedCar;
                 } catch (_) {}
                 this.mapQuality = 'high';
                 this.mapStyle = 'clean';
@@ -910,7 +960,7 @@
                 // Drive simulator (debug without real GPS movement)
                 this.simulating = false;
                 this.simTimer = null;
-                this.simSpeedKmh = 50;
+                this.simSpeedKmh = 120;
                 this.simIndex = 0;
                 this.simT = 0;
                 this.simOffRoute = false;
@@ -1159,12 +1209,12 @@
                 if (delta < -180) delta += 360;
 
                 // One-frame reverse along a noisy polyline — keep the current view.
-                if (Math.abs(delta) > 120) return;
+                if (Math.abs(delta) > (this.simulating && this.simSpeedKmh >= 200 ? 175 : 120)) return;
 
                 const now = performance.now();
                 const dt = Math.min(0.2, Math.max(0.016, (now - (this._headingAt || now)) / 1000));
                 this._headingAt = now;
-                const maxStep = (this.simulating ? 140 : 90) * dt;
+                const maxStep = (this.simulating ? Math.max(180, this.simSpeedKmh * 0.8) : 90) * dt;
                 if (Math.abs(delta) > maxStep) delta = Math.sign(delta) * maxStep;
 
                 const ease = this.isNavigating ? 0.45 : (options.snap ? 1 : 0.35);
@@ -1635,6 +1685,14 @@
                 };
 
                 document.getElementById('simToggleBtn').onclick = () => this.toggleSimPanel();
+                document.getElementById('simMinBtn').onclick = (e) => {
+                    e.stopPropagation();
+                    this.setSimMinimized(true);
+                };
+                document.getElementById('simTabBtn').onclick = () => {
+                    const panel = document.getElementById('simPanel');
+                    if (panel.classList.contains('minimized')) this.setSimMinimized(false);
+                };
                 document.getElementById('simPlayBtn').onclick = () => this.startSim();
                 document.getElementById('simPauseBtn').onclick = () => this.pauseSim();
                 document.getElementById('simResetBtn').onclick = () => this.resetSim();
@@ -2092,16 +2150,12 @@
             }
 
             teslaCarHtml() {
-                const pack = this.carCatalog('mark')[this.carStyle] || this.carCatalog('mark').photo;
+                const pack = this.carCatalog('mark')[this.carStyle] || this.carCatalog('mark').halo;
                 return pack.html;
             }
 
             carCatalog(ns = 'c') {
                 return {
-                    photo: {
-                        name: 'Photo',
-                        html: '<img src="tesla-car.jpg" alt="Photo">'
-                    },
                     pulse: {
                         name: 'Pulse',
                         html: `<svg viewBox="0 0 78 78" xmlns="http://www.w3.org/2000/svg" aria-label="Pulse">
@@ -2242,7 +2296,16 @@
                 const open = panel.classList.contains('hidden');
                 panel.classList.toggle('hidden', !open);
                 btn.classList.toggle('sim-on', open);
-                if (open) this.seedFallbackPosition();
+                if (open) {
+                    this.seedFallbackPosition();
+                    this.setSimMinimized(false);
+                }
+            }
+
+            setSimMinimized(on) {
+                const panel = document.getElementById('simPanel');
+                if (!panel) return;
+                panel.classList.toggle('minimized', !!on);
             }
 
             syncSimToRoute() {
