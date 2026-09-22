@@ -6,6 +6,7 @@
     <title>Tesla Navigator</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -88,6 +89,34 @@
             will-change: auto;
             overflow: visible;
         }
+        .glmap {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            display: none;
+            background: #d9d5cc;
+        }
+        .map-stage.drive-gl .glmap { display: block; }
+        .map-stage.drive-gl .map-camera { visibility: hidden; }
+        .hud-car {
+            display: none;
+            position: absolute;
+            left: 50%;
+            top: 75%;
+            width: 78px;
+            height: 78px;
+            transform: translate(-50%, -50%);
+            z-index: 6;
+            pointer-events: none;
+        }
+        .map-stage.drive-gl .hud-car { display: block; }
+        .gl-car {
+            width: 78px;
+            height: 78px;
+            pointer-events: none;
+        }
+        .glmap .maplibregl-ctrl-bottom-left,
+        .glmap .maplibregl-ctrl-bottom-right { display: none; }
         .map-stage.drive-3d #map {
             position: absolute;
             height: var(--map-load-size, 200%);
@@ -179,6 +208,130 @@
             transform: translateX(-20px);
             pointer-events: none;
         }
+        .places-panel {
+            position: fixed;
+            right: 12px;
+            top: 80px;
+            z-index: 1000;
+            width: 320px;
+            max-height: calc(100vh - 160px);
+            background: rgba(26, 26, 26, 0.95);
+            border: 1px solid var(--tesla-light-gray);
+            border-radius: 10px;
+            padding: 10px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .places-panel.hidden-ui,
+        .places-panel.places-hidden {
+            opacity: 0;
+            transform: translateX(20px);
+            pointer-events: none;
+        }
+        .places-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: var(--tesla-text-dim);
+        }
+        .places-hide-btn {
+            border: 1px solid var(--tesla-light-gray);
+            background: var(--tesla-gray);
+            color: var(--tesla-text);
+            border-radius: 8px;
+            width: 34px;
+            height: 28px;
+            font-size: 18px;
+            line-height: 1;
+            cursor: pointer;
+            flex: 0 0 auto;
+        }
+        .places-tab {
+            display: none;
+            position: fixed;
+            right: 12px;
+            top: 80px;
+            z-index: 1000;
+            border: 1px solid var(--tesla-light-gray);
+            background: rgba(26, 26, 26, 0.95);
+            color: var(--tesla-text);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+        }
+        .places-tab.visible { display: block; }
+        .places-row { display: flex; gap: 6px; }
+        .places-row button, .places-add button, .place-go {
+            flex: 1;
+            padding: 10px 8px;
+            border: 1px solid var(--tesla-light-gray);
+            background: var(--tesla-gray);
+            color: var(--tesla-text);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .places-row button.primary { background: var(--tesla-blue); border-color: var(--tesla-blue); color: #fff; }
+        .places-add { display: flex; flex-direction: column; gap: 6px; }
+        .places-add input {
+            background: var(--tesla-gray);
+            border: 1px solid var(--tesla-light-gray);
+            border-radius: 6px;
+            padding: 10px 12px;
+            color: var(--tesla-text);
+            font-size: 14px;
+            outline: none;
+        }
+        .places-tabs { display: flex; gap: 6px; }
+        .places-tabs button {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            background: var(--tesla-gray);
+            color: var(--tesla-text-dim);
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .places-tabs button.active { background: var(--tesla-blue); color: #fff; }
+        .places-list {
+            overflow-y: auto;
+            max-height: 280px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .place-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--tesla-gray);
+            border-radius: 8px;
+            padding: 8px;
+        }
+        .place-item .meta { flex: 1; min-width: 0; }
+        .place-item .name { font-size: 14px; font-weight: 700; color: var(--tesla-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .place-item .addr { font-size: 12px; color: var(--tesla-text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .place-item .when { font-size: 11px; color: #7a7a7a; }
+        .place-del {
+            border: none;
+            background: transparent;
+            color: #e31937;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 4px 6px;
+        }
+        .places-empty { color: var(--tesla-text-dim); font-size: 13px; padding: 10px 4px; }
         
         .search-container {
             background: rgba(26, 26, 26, 0.95); 
@@ -282,10 +435,33 @@
             color: white;
             border-color: #ff9800;
         }
-        .quality-btn.active, .style-btn.active {
+        .quality-btn.active, .style-btn.active, .shape-btn.active {
             background: var(--tesla-blue);
             color: white;
             border-color: var(--tesla-blue);
+        }
+        .route-swatch {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 2px solid #555;
+            padding: 0;
+            cursor: pointer;
+            background: #3e6ae1;
+        }
+        .route-swatch.active {
+            border-color: #fff;
+            box-shadow: 0 0 0 2px var(--tesla-blue);
+        }
+        .shape-btn {
+            padding: 10px 12px;
+            border: 1px solid var(--tesla-light-gray);
+            background: var(--tesla-gray);
+            color: var(--tesla-text-dim);
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
         }
         
         .btn-go {
@@ -731,6 +907,8 @@
         <div class="map-camera" id="mapCamera">
             <div id="map"></div>
         </div>
+        <div id="glmap" class="glmap"></div>
+        <div id="hudCar" class="hud-car"></div>
     </div>
     
     <!-- Compass controls -->
@@ -804,6 +982,27 @@
             </div>
             
             <div class="traffic-toggle">
+                <span class="traffic-label">🔵 Line:</span>
+                <div class="traffic-buttons" id="routeColorBtns">
+                    <button type="button" class="route-swatch active" data-route-color="blue" style="background:#3e6ae1" title="Blue"></button>
+                    <button type="button" class="route-swatch" data-route-color="cyan" style="background:#00d4ff" title="Cyan"></button>
+                    <button type="button" class="route-swatch" data-route-color="white" style="background:#f2f4f8" title="White"></button>
+                    <button type="button" class="route-swatch" data-route-color="red" style="background:#e31937" title="Red"></button>
+                    <button type="button" class="route-swatch" data-route-color="green" style="background:#4caf50" title="Green"></button>
+                    <button type="button" class="route-swatch" data-route-color="orange" style="background:#ff9800" title="Orange"></button>
+                </div>
+            </div>
+            <div class="traffic-toggle">
+                <span class="traffic-label">➖ Shape:</span>
+                <div class="traffic-buttons" id="routeShapeBtns">
+                    <button type="button" class="shape-btn active" data-route-shape="solid">Solid</button>
+                    <button type="button" class="shape-btn" data-route-shape="dash">Dash</button>
+                    <button type="button" class="shape-btn" data-route-shape="dot">Dots</button>
+                    <button type="button" class="shape-btn" data-route-shape="glow">Glow</button>
+                </div>
+            </div>
+
+            <div class="traffic-toggle">
                 <span class="traffic-label">🚦 Traffic:</span>
                 <div class="traffic-buttons">
                     <button class="traffic-btn" data-multiplier="1">None</button>
@@ -821,6 +1020,32 @@
             <button id="clearBtn" class="btn btn-secondary">✖️ Clear</button>
         </div>
     </div>
+
+    <div class="places-panel" id="placesPanel">
+        <div class="places-head">
+            <span>DESTINATIONS</span>
+            <button type="button" class="places-hide-btn" id="placesHideBtn" title="Hide">–</button>
+        </div>
+        <div class="places-row">
+            <button type="button" class="primary" id="goHomeBtn">🏠 Home</button>
+            <button type="button" class="primary" id="goWorkBtn">💼 Work</button>
+        </div>
+        <div class="places-row">
+            <button type="button" id="setHomeBtn">Set home</button>
+            <button type="button" id="setWorkBtn">Set work</button>
+        </div>
+        <div class="places-add">
+            <input id="placeNameInput" placeholder="Name (Cafe, Mom…)">
+            <input id="placeAddrInput" placeholder="Address to save">
+            <button type="button" id="addPlaceBtn">＋ Save address</button>
+        </div>
+        <div class="places-tabs">
+            <button type="button" class="active" data-places-tab="saved">Saved</button>
+            <button type="button" data-places-tab="history">History</button>
+        </div>
+        <div id="placesList" class="places-list"></div>
+    </div>
+    <button type="button" class="places-tab" id="placesShowBtn">DESTINATIONS</button>
 
     <div id="simPanel" class="sim-panel hidden">
         <div class="sim-title" id="simTitleBar">
@@ -844,6 +1069,21 @@
             <button id="simDemoBtn" class="sim-btn">Demo route</button>
             <button id="simDeviateBtn" class="sim-btn warn">Off-route</button>
         </div>
+        <div class="sim-title" style="margin-top:8px;">ROUTE LINE</div>
+        <div class="sim-row" id="simRouteColors">
+            <button type="button" class="route-swatch active" data-route-color="blue" style="background:#3e6ae1"></button>
+            <button type="button" class="route-swatch" data-route-color="cyan" style="background:#00d4ff"></button>
+            <button type="button" class="route-swatch" data-route-color="white" style="background:#f2f4f8"></button>
+            <button type="button" class="route-swatch" data-route-color="red" style="background:#e31937"></button>
+            <button type="button" class="route-swatch" data-route-color="green" style="background:#4caf50"></button>
+            <button type="button" class="route-swatch" data-route-color="orange" style="background:#ff9800"></button>
+        </div>
+        <div class="sim-row">
+            <button type="button" class="sim-btn shape-btn active" data-route-shape="solid">Solid</button>
+            <button type="button" class="sim-btn shape-btn" data-route-shape="dash">Dash</button>
+            <button type="button" class="sim-btn shape-btn" data-route-shape="dot">Dots</button>
+            <button type="button" class="sim-btn shape-btn" data-route-shape="glow">Glow</button>
+        </div>
         <div class="sim-title" style="margin-top:8px;">CAR ICON</div>
         <div class="car-picker" id="carPicker"></div>
         <div class="sim-title">CAMERA</div>
@@ -854,8 +1094,8 @@
         </div>
         <div class="sim-field">
             <label>Zoom</label>
-            <input type="range" data-cam="zoom" min="12" max="24" step="0.1" value="18.8">
-            <input type="number" data-cam="zoom" min="12" max="24" step="0.1" value="18.8">
+            <input type="range" data-cam="zoom" min="15" max="18" step="1" value="18">
+            <input type="number" data-cam="zoom" min="15" max="18" step="1" value="18">
         </div>
         <div class="sim-row">
             <button id="camSaveBtn" class="sim-btn save">Save cam</button>
@@ -899,6 +1139,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
     <script>
         class TeslaNav {
             constructor() {
@@ -924,11 +1165,14 @@
                 this.compassMode = false;
                 this.orientationSupported = false;
                 this.lastPos = null;
-                this.driveZoom = 18.8;
+                this.driveZoom = 18;
                 this.camLookAhead = 0;
                 this.camDefaults = {
-                    angle: 56.4, zoom: 18.8
+                    angle: 56.4, zoom: 18
                 };
+                this.glMap = null;
+                this.glCar = null;
+                this.glDest = null;
                 this.carStyle = 'halo';
                 try {
                     const savedCar = localStorage.getItem('tesla_car_style');
@@ -956,6 +1200,18 @@
                 this.lastRerouteAt = 0;
                 this.offRouteLimitM = 10; // auto-reroute after ~10m deviation
                 this.baseTileLayer = null;
+                this.remainingHalo = null;
+                this.routeLineColor = 'blue';
+                this.routeLineShape = 'solid';
+                try {
+                    const savedC = localStorage.getItem('tesla_route_color');
+                    const savedSh = localStorage.getItem('tesla_route_shape');
+                    if (savedC && ['blue', 'cyan', 'white', 'red', 'green', 'orange'].includes(savedC)) this.routeLineColor = savedC;
+                    if (savedSh && ['solid', 'dash', 'dot', 'glow'].includes(savedSh)) this.routeLineShape = savedSh;
+                } catch (_) {}
+                this.places = { home: null, work: null, saved: [], history: [] };
+                this.placesTab = 'saved';
+                this._pendingDest = null;
 
                 // Drive simulator (debug without real GPS movement)
                 this.simulating = false;
@@ -978,9 +1234,9 @@
                 const mapOpts = {
                     zoomControl: true,
                     attributionControl: false,
-                    maxZoom: 19,
-                    zoomSnap: 0.1,
-                    zoomDelta: 0.1,
+                    maxZoom: 18,
+                    zoomSnap: 1,
+                    zoomDelta: 1,
                     fadeAnimation: false,
                     markerZoomAnimation: false
                 };
@@ -990,7 +1246,11 @@
                 
                 this.startGPS();
                 this.initControls();
+                this.syncRouteLineButtons();
+                this.loadPlaces();
+                this.setPlacesHidden(false);
                 this.restoreDeveloperMode();
+                this.registerTileCache();
                 this.notify('Ready! 🚗', 'success');
             }
             
@@ -1067,6 +1327,7 @@
                     const sLabel = this.mapStyle === 'osm' ? 'OSM' : this.mapStyle === 'simple' ? 'Simple' : 'Clean';
                     this.notify('🗺️ ' + sLabel + ' · ' + qLabel, 'info');
                 }
+                this.applyGlStyle();
                 if (this.isNavigating) {
                     setTimeout(() => {
                         this.refreshTiles();
@@ -1084,6 +1345,594 @@
                 mapEl.style.setProperty('--map-load-size', S + '%');
                 mapEl.style.setProperty('--map-load-left', left + '%');
                 mapEl.style.setProperty('--map-load-top', top + '%');
+            }
+
+            qualityPreset() {
+                const presets = {
+                    low:  { keepBuffer: 4,  maxNativeZoom: 16, updateWhenIdle: true,  updateInterval: 400, size: 140 },
+                    med:  { keepBuffer: 6,  maxNativeZoom: 18, updateWhenIdle: false, updateInterval: 200, size: 170 },
+                    high:  { keepBuffer: 8,  maxNativeZoom: 18, updateWhenIdle: false, updateInterval: 120, size: 200 }
+                };
+                return presets[this.mapQuality] || presets.high;
+            }
+
+            tileConfig() {
+                const styles = {
+                    osm: {
+                        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        maxNative: 19,
+                        subdomains: 'abc',
+                        attrib: '© OpenStreetMap'
+                    },
+                    clean: {
+                        url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+                        maxNative: 20,
+                        subdomains: 'abcd',
+                        attrib: '© OpenStreetMap © CARTO'
+                    },
+                    simple: {
+                        url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                        maxNative: 20,
+                        subdomains: 'abcd',
+                        attrib: '© OpenStreetMap © CARTO'
+                    }
+                };
+                const style = styles[this.mapStyle] || styles.clean;
+                return style;
+            }
+
+            tileUrls() {
+                const style = this.tileConfig();
+                return (style.subdomains || 'abc').split('').map((s) => style.url.replace('{s}', s));
+            }
+
+            integerZoom() {
+                return Math.round(Math.min(18, Math.max(15, this.driveZoom)));
+            }
+
+            latLngToTile(lat, lng, z) {
+                const n = 2 ** z;
+                const x = Math.floor((lng + 180) / 360 * n);
+                const latRad = lat * Math.PI / 180;
+                const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+                return { x, y };
+            }
+
+            prefetchAheadTiles(force = false) {
+                if (!this.currentPos) return;
+                const now = Date.now();
+                const movedM = this._prefetchPos ? this.calculateDistance(this._prefetchPos, this.currentPos) * 1000 : 999;
+                if (!force && this._prefetchAt && now - this._prefetchAt < 1800 && movedM < 80) return;
+                this._prefetchAt = now;
+                this._prefetchPos = this.currentPos;
+
+                const zoom = this.integerZoom();
+                const urls = this.tileUrls();
+                const points = [];
+                for (let m = 0; m <= 450; m += 90) {
+                    points.push(this.routeCoords.length ? this.pointAlongRoute(m) : this.pointAhead(m));
+                }
+                const seen = new Set();
+                points.forEach((p) => {
+                    if (!p) return;
+                    const tile = this.latLngToTile(p[0], p[1], zoom);
+                    for (let dx = -1; dx <= 1; dx++) {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            const x = tile.x + dx;
+                            const y = tile.y + dy;
+                            const key = zoom + '/' + x + '/' + y;
+                            if (seen.has(key)) continue;
+                            seen.add(key);
+                            const tmpl = urls[Math.abs(x + y) % urls.length];
+                            const img = new Image();
+                            img.referrerPolicy = 'no-referrer';
+                            img.src = tmpl.replace('{z}', zoom).replace('{x}', x).replace('{y}', y);
+                        }
+                    }
+                });
+            }
+
+            registerTileCache() {
+                if (!('serviceWorker' in navigator)) return;
+                navigator.serviceWorker.register('./sw.js').catch(() => {});
+            }
+
+            glStyleUrl() {
+                if (this.mapStyle === 'simple') return 'https://tiles.openfreemap.org/styles/positron';
+                if (this.mapStyle === 'osm') return 'https://tiles.openfreemap.org/styles/bright';
+                return 'https://tiles.openfreemap.org/styles/liberty';
+            }
+
+            glStyleSpec() {
+                const style = this.tileConfig();
+                const q = this.qualityPreset();
+                return {
+                    version: 8,
+                    sources: {
+                        raster: {
+                            type: 'raster',
+                            tiles: this.tileUrls(),
+                            tileSize: 256,
+                            maxzoom: Math.min(q.maxNativeZoom, style.maxNative, 18),
+                            attribution: style.attrib
+                        }
+                    },
+                    layers: [{ id: 'basemap', type: 'raster', source: 'raster' }]
+                };
+            }
+
+            ensureGlMap() {
+                if (this.glMap || typeof maplibregl === 'undefined') return;
+                const el = document.getElementById('glmap');
+                if (!el) return;
+                const start = this.currentPos || [40.1872, 44.5152];
+                this._glStyleUrl = this.glStyleUrl();
+                this.glMap = new maplibregl.Map({
+                    container: el,
+                    style: this._glStyleUrl,
+                    center: [start[1], start[0]],
+                    zoom: this.integerZoom(),
+                    pitch: this.currentCamera().angle,
+                    bearing: this.heading || 0,
+                    attributionControl: false,
+                    fadeDuration: 0,
+                    maxPitch: 70,
+                    maxZoom: 18,
+                    minZoom: 12,
+                    interactive: false,
+                    pixelRatio: 1,
+                    antialias: true,
+                    renderWorldCopies: false
+                });
+                this.glMap.on('load', () => {
+                    this.syncGlRoute();
+                    this.syncHudCar();
+                    this.cacheDrivePadding();
+                    this.glMap.resize();
+                });
+                if (!this._glResizeBound) {
+                    this._glResizeBound = () => {
+                        this._camPad = null;
+                        if (this.glMap) {
+                            this.glMap.resize();
+                            this.cacheDrivePadding();
+                        }
+                    };
+                    window.addEventListener('resize', this._glResizeBound);
+                }
+            }
+
+            applyGlStyle() {
+                if (!this.glMap) return;
+                const url = this.glStyleUrl();
+                if (this._glStyleUrl === url) return;
+                this._glStyleUrl = url;
+                this.glMap.setStyle(url);
+                this.glMap.once('style.load', () => this.syncGlRoute());
+            }
+
+            cacheDrivePadding() {
+                if (!this.glMap) return;
+                const h = this.glMap.getContainer().clientHeight || window.innerHeight;
+                this._camPadH = h;
+                this._camOffsetY = 0;
+                this._camPad = { top: Math.round(h * 0.5), bottom: 0, left: 0, right: 0 };
+            }
+
+            getDriveCameraBearing() {
+                const pose = this._drivePose || this.snapDrivePose();
+                if (pose && pose.bearing != null) return pose.bearing;
+                return this.heading || 0;
+            }
+
+            headingDelta(from, to) {
+                let d = to - from;
+                if (d > 180) d -= 360;
+                if (d < -180) d += 360;
+                return d;
+            }
+
+            snapDrivePose() {
+                if (!this.currentPos) return null;
+                if (!this.routeCoords.length) {
+                    return { pos: this.currentPos, bearing: this.heading || 0, idx: 0, dist: 0 };
+                }
+                const coords = this.routeCoords;
+                const locked = this.routeProgressIndex || 0;
+                const from = Math.max(0, locked - 1);
+                const last = Math.min(coords.length - 2, locked + 50);
+                let bestDist = Infinity;
+                let best = { t: 0, q: this.currentPos, i: locked };
+                for (let i = from; i <= last; i++) {
+                    const proj = this.projectOnSegment(this.currentPos, coords[i], coords[i + 1]);
+                    if (proj.dist < bestDist) {
+                        bestDist = proj.dist;
+                        best = { t: proj.t, q: proj.q, i };
+                    }
+                }
+                if (best.i < locked && bestDist > 2.2 && locked <= coords.length - 2) {
+                    const stay = this.projectOnSegment(this.currentPos, coords[locked], coords[locked + 1]);
+                    best = { t: stay.t, q: stay.q, i: locked };
+                    bestDist = stay.dist;
+                }
+                if (best.i >= locked) this.routeProgressIndex = best.i;
+
+                const end = coords[Math.min(best.i + 1, coords.length - 1)];
+                let bearing = this.bearingBetween(best.q, end);
+                const rem = this.calculateDistance(best.q, end) * 1000;
+                if (rem < 2 && best.i + 2 < coords.length) {
+                    bearing = this.bearingBetween(end, coords[best.i + 2]);
+                }
+                const pose = { pos: best.q, bearing, idx: best.i, dist: bestDist };
+                this._drivePose = pose;
+                return pose;
+            }
+
+            routeColorHex() {
+                const colors = {
+                    blue: '#3e6ae1',
+                    cyan: '#00d4ff',
+                    white: '#f2f4f8',
+                    red: '#e31937',
+                    green: '#4caf50',
+                    orange: '#ff9800'
+                };
+                return colors[this.routeLineColor] || colors.blue;
+            }
+
+            routeShapeSpec() {
+                const shapes = {
+                    solid: { dash: null, glDash: null, weight: 7, glow: false, cap: 'round' },
+                    dash: { dash: '14, 12', glDash: [2.4, 1.6], weight: 7, glow: false, cap: 'butt' },
+                    dot: { dash: '2, 11', glDash: [0.35, 1.7], weight: 8, glow: false, cap: 'round' },
+                    glow: { dash: null, glDash: null, weight: 6, glow: true, cap: 'round' }
+                };
+                return shapes[this.routeLineShape] || shapes.solid;
+            }
+
+            setRouteLineColor(id) {
+                if (!['blue', 'cyan', 'white', 'red', 'green', 'orange'].includes(id)) return;
+                this.routeLineColor = id;
+                try { localStorage.setItem('tesla_route_color', id); } catch (_) {}
+                this.syncRouteLineButtons();
+                this.applyRouteLineStyle();
+            }
+
+            setRouteLineShape(id) {
+                if (!['solid', 'dash', 'dot', 'glow'].includes(id)) return;
+                this.routeLineShape = id;
+                try { localStorage.setItem('tesla_route_shape', id); } catch (_) {}
+                this.syncRouteLineButtons();
+                this.applyRouteLineStyle();
+            }
+
+            syncRouteLineButtons() {
+                document.querySelectorAll('[data-route-color]').forEach((btn) => {
+                    btn.classList.toggle('active', btn.dataset.routeColor === this.routeLineColor);
+                });
+                document.querySelectorAll('[data-route-shape]').forEach((btn) => {
+                    btn.classList.toggle('active', btn.dataset.routeShape === this.routeLineShape);
+                });
+            }
+
+            leafletRouteStyle() {
+                const spec = this.routeShapeSpec();
+                return {
+                    color: this.routeColorHex(),
+                    weight: spec.weight,
+                    opacity: 0.95,
+                    dashArray: spec.dash || null,
+                    lineJoin: 'round',
+                    lineCap: spec.cap
+                };
+            }
+
+            applyRouteLineStyle() {
+                const style = this.leafletRouteStyle();
+                const spec = this.routeShapeSpec();
+                if (this.remainingLine) this.remainingLine.setStyle(style);
+                if (this.remainingHalo) {
+                    this.map.removeLayer(this.remainingHalo);
+                    this.remainingHalo = null;
+                }
+                if (spec.glow && this.remainingLine) {
+                    this.remainingHalo = L.polyline(this.remainingLine.getLatLngs(), {
+                        color: this.routeColorHex(),
+                        weight: 16,
+                        opacity: 0.28,
+                        lineJoin: 'round',
+                        lineCap: 'round'
+                    }).addTo(this.map);
+                    this.remainingHalo.bringToBack();
+                    this.remainingLine.bringToFront();
+                }
+                this.applyGlRouteStyle();
+            }
+
+            applyGlRouteStyle() {
+                if (!this.glMap || !this.glMap.isStyleLoaded()) return;
+                const color = this.routeColorHex();
+                const spec = this.routeShapeSpec();
+                if (!this.glMap.getLayer('route-line') && this.glMap.getSource('route')) {
+                    this.ensureGlRouteLayers();
+                }
+                if (this.glMap.getLayer('route-glow')) {
+                    this.glMap.setPaintProperty('route-glow', 'line-color', color);
+                    this.glMap.setPaintProperty('route-glow', 'line-opacity', spec.glow ? 0.28 : 0);
+                    this.glMap.setPaintProperty('route-glow', 'line-width', spec.glow ? 16 : 0);
+                }
+                if (this.glMap.getLayer('route-line')) {
+                    this.glMap.setPaintProperty('route-line', 'line-color', color);
+                    this.glMap.setPaintProperty('route-line', 'line-width', spec.weight);
+                    this.glMap.setPaintProperty('route-line', 'line-opacity', 0.95);
+                    try {
+                        if (spec.glDash) this.glMap.setPaintProperty('route-line', 'line-dasharray', spec.glDash);
+                        else this.glMap.setPaintProperty('route-line', 'line-dasharray', null);
+                    } catch (_) {}
+                    this.glMap.setLayoutProperty('route-line', 'line-cap', spec.cap);
+                }
+            }
+
+            ensureGlRouteLayers() {
+                if (!this.glMap || !this.glMap.getSource('route')) return;
+                const color = this.routeColorHex();
+                const spec = this.routeShapeSpec();
+                if (!this.glMap.getLayer('route-glow')) {
+                    this.glMap.addLayer({
+                        id: 'route-glow',
+                        type: 'line',
+                        source: 'route',
+                        layout: { 'line-join': 'round', 'line-cap': 'round' },
+                        paint: { 'line-color': color, 'line-width': spec.glow ? 16 : 0, 'line-opacity': spec.glow ? 0.28 : 0 }
+                    });
+                }
+                if (!this.glMap.getLayer('route-line')) {
+                    this.glMap.addLayer({
+                        id: 'route-line',
+                        type: 'line',
+                        source: 'route',
+                        layout: { 'line-join': 'round', 'line-cap': spec.cap },
+                        paint: {
+                            'line-color': color,
+                            'line-width': spec.weight,
+                            'line-opacity': 0.95,
+                            ...(spec.glDash ? { 'line-dasharray': spec.glDash } : {})
+                        }
+                    });
+                }
+            }
+
+            remainingRouteCoords(pose) {
+                const coords = this.routeCoords;
+                if (!pose || !coords.length) return this.currentPos ? [this.currentPos] : [];
+                const i = pose.idx;
+                let start = pose.pos;
+                if (i + 1 < coords.length) {
+                    const next = coords[i + 1];
+                    const seg = this.calculateDistance(pose.pos, next) * 1000;
+                    if (seg > 1.5) start = this.interpolate(pose.pos, next, 1.5 / seg);
+                }
+                const out = [start];
+                if (i + 1 < coords.length) {
+                    const next = coords[i + 1];
+                    if (this.calculateDistance(start, next) * 1000 > 0.4) out.push(next);
+                }
+                for (let k = i + 2; k < coords.length; k++) out.push(coords[k]);
+                return out;
+            }
+
+            paintRemainingRoute(pose) {
+                if (!pose) return;
+                const remaining = this.remainingRouteCoords(pose);
+                const latlngs = remaining.length ? remaining : [pose.pos];
+                if (this.remainingLine) this.remainingLine.setLatLngs(latlngs);
+                if (this.remainingHalo) this.remainingHalo.setLatLngs(latlngs);
+                this.syncGlRoute();
+            }
+
+            turnAngleDeg(a, b, c) {
+                let d = this.bearingBetween(b, c) - this.bearingBetween(a, b);
+                if (d > 180) d -= 360;
+                if (d < -180) d += 360;
+                return d;
+            }
+
+            collapseClosePoints(coords, minM) {
+                if (!coords || coords.length < 2) return coords ? coords.slice() : [];
+                const out = [coords[0]];
+                for (let i = 1; i < coords.length; i++) {
+                    const last = i === coords.length - 1;
+                    if (last || this.calculateDistance(out[out.length - 1], coords[i]) * 1000 >= minM) {
+                        out.push(coords[i]);
+                    }
+                }
+                out[out.length - 1] = coords[coords.length - 1];
+                return out;
+            }
+
+            smoothRoute(raw) {
+                if (!raw || raw.length < 3) return raw ? raw.slice() : [];
+                const coords = this.collapseClosePoints(raw, 2.4);
+                const out = [coords[0]];
+                for (let i = 1; i < coords.length - 1; i++) {
+                    const a = coords[i - 1];
+                    const v = coords[i];
+                    const b = coords[i + 1];
+                    const turn = this.turnAngleDeg(a, v, b);
+                    const absTurn = Math.abs(turn);
+                    if (absTurn < 16) {
+                        out.push(v);
+                        continue;
+                    }
+                    const dIn = this.calculateDistance(a, v) * 1000;
+                    const dOut = this.calculateDistance(v, b) * 1000;
+                    let radius = Math.min(38, 10 + absTurn * 0.22);
+                    const maxOff = Math.min(dIn * 0.42, dOut * 0.42);
+                    const tanHalf = Math.tan((absTurn * Math.PI / 180) / 2);
+                    if (tanHalf < 0.06 || maxOff < 3.5) {
+                        out.push(v);
+                        continue;
+                    }
+                    let offset = radius / tanHalf;
+                    if (offset > maxOff) {
+                        offset = maxOff;
+                        radius = offset * tanHalf;
+                    }
+                    if (radius < 5) {
+                        out.push(v);
+                        continue;
+                    }
+                    const p1 = this.offsetByMeters(v, this.bearingBetween(v, a), offset);
+                    const p2 = this.offsetByMeters(v, this.bearingBetween(v, b), offset);
+                    const incoming = this.bearingBetween(a, v);
+                    const inward = (incoming + (turn > 0 ? 90 : -90) + 360) % 360;
+                    const center = this.offsetByMeters(p1, inward, radius);
+                    const a1 = this.bearingBetween(center, p1);
+                    const a2 = this.bearingBetween(center, p2);
+                    let sweep = a2 - a1;
+                    if (sweep > 180) sweep -= 360;
+                    if (sweep < -180) sweep += 360;
+                    if (Math.sign(sweep) !== Math.sign(turn) && Math.abs(turn) > 1) {
+                        sweep += sweep > 0 ? -360 : 360;
+                    }
+                    const steps = Math.max(6, Math.round(absTurn / 9));
+                    for (let s = 0; s <= steps; s++) {
+                        out.push(this.offsetByMeters(center, a1 + sweep * (s / steps), radius));
+                    }
+                }
+                out.push(coords[coords.length - 1]);
+                return this.collapseClosePoints(out, 1.4);
+            }
+
+            startDriveCam() {
+                if (this._camRaf) return;
+                const loop = (ts) => {
+                    this._camRaf = requestAnimationFrame(loop);
+                    this.tickDriveCam(ts);
+                };
+                this._camRaf = requestAnimationFrame(loop);
+            }
+
+            stopDriveCam() {
+                if (this._camRaf) cancelAnimationFrame(this._camRaf);
+                this._camRaf = null;
+                this._cam = null;
+                this._camTs = 0;
+                this._camSettled = false;
+            }
+
+            tickDriveCam(ts) {
+                if (!this.glMap || !this.isNavigating || !this.currentPos) {
+                    this.stopDriveCam();
+                    return;
+                }
+                const dt = Math.min(0.05, Math.max(0.008, (ts - (this._camTs || ts)) / 1000));
+                this._camTs = ts;
+                const pose = this.snapDrivePose();
+                const onLine = pose && pose.dist <= 12;
+                const target = onLine ? pose.pos : this.currentPos;
+                if (onLine) this.paintRemainingRoute(pose);
+                const zoom = this.integerZoom();
+                const pitch = Math.max(0, Math.min(70, this.currentCamera().angle));
+                const want = (onLine && pose.bearing != null)
+                    ? pose.bearing
+                    : (this._headingTarget != null ? this._headingTarget : (this.heading || 0));
+                let db = this.headingDelta(this.heading || want, want);
+                if (Math.abs(db) > 150 || Math.abs(db) < 3) {
+                    db = 0;
+                } else {
+                    db *= (1 - Math.exp(-12 * dt));
+                    const max = 140 * dt;
+                    if (Math.abs(db) > max) db = Math.sign(db) * max;
+                }
+                this.heading = ((this.heading || want) + db + 360) % 360;
+                if (db) this.updateCompassDisplay();
+                if (!this._cam) {
+                    this._cam = { lng: target[1], lat: target[0], bearing: this.heading, pitch, zoom };
+                }
+                const movedM = this.calculateDistance([this._cam.lat, this._cam.lng], target) * 1000;
+                this._cam.lng = target[1];
+                this._cam.lat = target[0];
+                this._cam.pitch = pitch;
+                this._cam.zoom = zoom;
+                this._cam.bearing = this.heading;
+                const h = this.glMap.getContainer().clientHeight;
+                if (!this._camPad || this._camPadH !== h || !this._camPad.top) this.cacheDrivePadding();
+                const padReady = this._camPad && this._camPad.top > 0;
+                if (padReady && movedM < 0.16 && Math.abs(db) < 0.35 && this._camSettled) {
+                    this.hideGlCar();
+                    return;
+                }
+                this._camSettled = !!padReady;
+                try {
+                    this.glMap.setPadding(this._camPad);
+                    this.glMap.jumpTo({
+                        center: [this._cam.lng, this._cam.lat],
+                        around: [this._cam.lng, this._cam.lat],
+                        zoom: this._cam.zoom,
+                        pitch: this._cam.pitch,
+                        bearing: this._cam.bearing,
+                        padding: this._camPad
+                    });
+                } catch (_) {}
+                this.hideGlCar();
+            }
+
+            syncHudCar() {
+                const el = document.getElementById('hudCar');
+                if (!el) return;
+                el.className = 'hud-car car-' + this.carStyle;
+                el.innerHTML = this.teslaCarHtml();
+            }
+
+            syncGlRoute() {
+                if (!this.glMap) return;
+                const ready = () => {
+                    const pose = this._drivePose || this.snapDrivePose();
+                    const rest = this.remainingRouteCoords(pose).map((c) => [c[1], c[0]]);
+                    const geo = {
+                        type: 'Feature',
+                        properties: {},
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: rest.length > 1 ? rest : [[0, 0], [0.0001, 0.0001]]
+                        }
+                    };
+                    if (this.glMap.getSource('route')) {
+                        this.glMap.getSource('route').setData(geo);
+                    } else if (this.glMap.isStyleLoaded()) {
+                        this.glMap.addSource('route', { type: 'geojson', data: geo });
+                    }
+                    this.ensureGlRouteLayers();
+                    this.applyGlRouteStyle();
+                    this.syncGlDest();
+                };
+                if (this.glMap.isStyleLoaded()) ready();
+                else this.glMap.once('load', ready);
+            }
+
+            syncGlDest() {
+                if (!this.glMap || !this.destinationPos || typeof maplibregl === 'undefined') return;
+                const lngLat = { lng: this.destinationPos[1], lat: this.destinationPos[0] };
+                if (!this.glDest) {
+                    const el = document.createElement('div');
+                    el.style.cssText = 'width:20px;height:20px;background:#e31937;border:3px solid white;border-radius:50%;box-shadow:0 0 10px rgba(227,25,55,0.8);';
+                    this.glDest = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(lngLat).addTo(this.glMap);
+                } else {
+                    this.glDest.setLngLat(lngLat);
+                }
+            }
+
+            hideGlCar() {
+                if (this.glCar) {
+                    this.glCar.remove();
+                    this.glCar = null;
+                }
+            }
+
+            syncGlCar() {
+                this.hideGlCar();
+                this.syncHudCar();
             }
 
             camEl() {
@@ -1183,7 +2032,7 @@
             }
             
             updateCursorRotation() {
-                const cursor = document.querySelector('.user-cursor');
+                const cursor = document.querySelector('.user-cursor-marker .user-cursor');
                 if (!cursor) return;
                 // Map yaws by -heading; counter-rotate the car so it stays
                 // screen-upright (rear view) and drives straight up the route.
@@ -1195,8 +2044,14 @@
                 
                 heading = ((heading % 360) + 360) % 360;
 
-                if (options.force) {
+                if (this.isNavigating && !options.force) {
+                    this._headingTarget = heading;
+                    return;
+                }
+
+                if (options.force || options.snap) {
                     this.heading = heading;
+                    this._headingTarget = heading;
                     this._headingAt = performance.now();
                     this.updateCompassDisplay();
                     if (this.compassMode && this.isNavigating) this.rotatePaneToHeading(this.heading);
@@ -1208,17 +2063,15 @@
                 if (delta > 180) delta -= 360;
                 if (delta < -180) delta += 360;
 
-                // One-frame reverse along a noisy polyline — keep the current view.
-                if (Math.abs(delta) > (this.simulating && this.simSpeedKmh >= 200 ? 175 : 120)) return;
+                if (Math.abs(delta) > 120) return;
 
                 const now = performance.now();
                 const dt = Math.min(0.2, Math.max(0.016, (now - (this._headingAt || now)) / 1000));
                 this._headingAt = now;
-                const maxStep = (this.simulating ? Math.max(180, this.simSpeedKmh * 0.8) : 90) * dt;
+                const maxStep = 90 * dt;
                 if (Math.abs(delta) > maxStep) delta = Math.sign(delta) * maxStep;
 
-                const ease = this.isNavigating ? 0.45 : (options.snap ? 1 : 0.35);
-                this.heading = ((this.heading + delta * ease) % 360 + 360) % 360;
+                this.heading = ((this.heading + delta * 0.35) % 360 + 360) % 360;
                 
                 this.updateCompassDisplay();
                 
@@ -1270,11 +2123,22 @@
             setDrive3D(enabled) {
                 const stage = document.getElementById('mapStage');
                 if (!stage) return;
-                stage.classList.toggle('drive-3d', !!enabled);
+                const useGl = !!enabled && typeof maplibregl !== 'undefined';
+                stage.classList.toggle('drive-3d', !!enabled && !useGl);
+                stage.classList.toggle('drive-gl', useGl);
                 this._driveFocus = null;
+                if (useGl) {
+                    this.ensureGlMap();
+                    this.applyGlStyle();
+                    this.syncGlRoute();
+                    this.syncGlCar();
+                    this.startDriveCam();
+                } else {
+                    this.stopDriveCam();
+                }
                 const kick = () => {
-                    if (!this.map) return;
-                    this.map.invalidateSize(false);
+                    if (this.glMap) this.glMap.resize();
+                    if (this.map) this.map.invalidateSize(false);
                     if (enabled && this.currentPos) this.applyDriveView(false);
                 };
                 requestAnimationFrame(() => {
@@ -1321,7 +2185,7 @@
                     let d = bearing - this._lastGoodBearing;
                     if (d > 180) d -= 360;
                     if (d < -180) d += 360;
-                    if (Math.abs(d) > 120) return this._lastGoodBearing;
+                    if (Math.abs(d) > 150) return this._lastGoodBearing;
                 }
                 this._lastGoodBearing = bearing;
                 return bearing;
@@ -1339,20 +2203,29 @@
             
             applyDriveView(animate = false) {
                 if (!this.currentPos) return;
-                
-                const zoom = this.driveZoom;
+
+                const zoom = this.integerZoom();
                 const focus = this.currentPos;
                 const prev = this._driveFocus;
                 const movedM = prev ? this.calculateDistance(prev, focus) * 1000 : 999;
                 const zoomed = this._driveZoomApplied !== zoom;
+                this.prefetchAheadTiles(animate);
 
-                // Pin the car at screen center / lower quarter. Don't look-ahead pan.
-                if (!prev || movedM > 8 || zoomed) {
+                if (this.glMap) {
+                    const pose = this._drivePose || this.snapDrivePose();
+                    this._driveFocus = (pose && pose.pos) || focus;
+                    this._driveZoomApplied = zoom;
+                    this.startDriveCam();
+                    if (animate) this._cam = null;
+                    return;
+                }
+
+                if (!prev || movedM > 25 || zoomed) {
                     this.map.setView(focus, zoom, { animate: false });
                     this._driveFocus = focus;
                     this._driveZoomApplied = zoom;
                 }
-                
+
                 if (this.compassMode) {
                     this.rotatePaneToHeading(this.heading);
                 }
@@ -1363,40 +2236,21 @@
                 if (!this.isNavigating || !this.remainingLine || !this.routeCoords.length || !this.currentPos) {
                     return { closestDistM: Infinity };
                 }
-                
-                const coords = this.routeCoords;
-                let closestIdx = this.routeProgressIndex;
-                let closestDist = Infinity;
+
+                const pose = this.snapDrivePose();
+                const closestDistM = pose ? pose.dist : Infinity;
                 const limitM = this.offRouteLimitM || 10;
-                
-                const start = Math.max(0, this.routeProgressIndex - 2);
-                for (let i = start; i < coords.length; i++) {
-                    const d = this.calculateDistance(this.currentPos, coords[i]);
-                    if (d < closestDist) {
-                        closestDist = d;
-                        closestIdx = i;
+
+                if (pose && closestDistM <= limitM) {
+                    if (pose.idx >= this.routeProgressIndex) {
+                        this.routeProgressIndex = pose.idx;
                     }
-                    if (i > closestIdx + 40 && closestDist < 0.08) break;
-                }
-                
-                const closestDistM = closestDist * 1000;
-                
-                // On-route: trim. Off-route (>10m): don't stretch — reroute.
-                if (closestDistM <= limitM) {
-                    if (closestIdx >= this.routeProgressIndex) {
-                        this.routeProgressIndex = closestIdx;
-                    }
-                    const remaining = coords.slice(this.routeProgressIndex);
-                    if (remaining.length === 0) {
-                        this.remainingLine.setLatLngs([this.currentPos]);
-                    } else {
-                        this.remainingLine.setLatLngs([this.currentPos, ...remaining]);
-                    }
+                    this.paintRemainingRoute(pose);
                     this.offRouteHits = 0;
                 } else {
                     this.offRouteHits += 1;
                 }
-                
+
                 return { closestDistM };
             }
             
@@ -1510,9 +2364,12 @@
                 
                 // Always face the route you should drive — never the phone compass.
                 if (this.isNavigating) {
-                    const routeBearing = this.getRouteAheadBearing();
-                    if (routeBearing !== null) {
-                        this.setHeading(routeBearing, { snap: true });
+                    const pose = this.snapDrivePose();
+                    if (pose && pose.dist <= 15) {
+                        this.setHeading(pose.bearing, { snap: true });
+                    } else {
+                        const routeBearing = this.getRouteAheadBearing();
+                        if (routeBearing !== null) this.setHeading(routeBearing, { snap: true });
                     }
                 } else if (this.lastPos) {
                     const moved = this.calculateDistance(this.lastPos, this.currentPos) * 1000;
@@ -1660,6 +2517,12 @@
                 document.querySelectorAll('.style-btn').forEach(btn => {
                     btn.onclick = () => this.setMapStyle(btn.dataset.style);
                 });
+                document.querySelectorAll('[data-route-color]').forEach((btn) => {
+                    btn.onclick = () => this.setRouteLineColor(btn.dataset.routeColor);
+                });
+                document.querySelectorAll('[data-route-shape]').forEach((btn) => {
+                    btn.onclick = () => this.setRouteLineShape(btn.dataset.routeShape);
+                });
                 
                 document.querySelectorAll('.traffic-btn').forEach(btn => {
                     btn.onclick = () => {
@@ -1677,6 +2540,30 @@
                 });
                 
                 document.getElementById('locateBtn').onclick = () => this.center();
+                document.getElementById('placesHideBtn').onclick = () => this.setPlacesHidden(true);
+                document.getElementById('placesShowBtn').onclick = () => this.setPlacesHidden(false);
+                document.getElementById('goHomeBtn').onclick = () => this.goSavedSlot('home');
+                document.getElementById('goWorkBtn').onclick = () => this.goSavedSlot('work');
+                document.getElementById('setHomeBtn').onclick = () => this.setSavedSlot('home');
+                document.getElementById('setWorkBtn').onclick = () => this.setSavedSlot('work');
+                document.getElementById('addPlaceBtn').onclick = () => this.addManualPlace();
+                document.getElementById('placeAddrInput').onkeypress = (e) => { if (e.key === 'Enter') this.addManualPlace(); };
+                document.querySelectorAll('[data-places-tab]').forEach((btn) => {
+                    btn.onclick = () => {
+                        this.placesTab = btn.dataset.placesTab;
+                        document.querySelectorAll('[data-places-tab]').forEach((b) => b.classList.toggle('active', b === btn));
+                        this.renderPlaces();
+                    };
+                });
+                document.getElementById('placesList').onclick = (e) => {
+                    const go = e.target.closest('[data-place-go]');
+                    const del = e.target.closest('[data-place-del]');
+                    if (del) {
+                        this.deletePlace(del.dataset.placeDel, del.dataset.placeKind);
+                        return;
+                    }
+                    if (go) this.goPlaceId(go.dataset.placeGo, go.dataset.placeKind);
+                };
                 document.getElementById('clearBtn').onclick = () => this.clear();
                 document.getElementById('startNavBtn').onclick = () => this.startNavigation();
                 document.getElementById('stopNavBtn').onclick = () => {
@@ -1748,8 +2635,10 @@
                 if (!cam || typeof cam !== 'object') return;
                 ['angle', 'zoom'].forEach((key) => {
                     if (cam[key] == null || Number.isNaN(Number(cam[key]))) return;
+                    let val = cam[key];
+                    if (key === 'zoom') val = Math.round(Math.min(18, Math.max(15, Number(val))));
                     document.querySelectorAll(`[data-cam="${key}"]`).forEach((el) => {
-                        el.value = cam[key];
+                        el.value = val;
                     });
                 });
             }
@@ -1764,7 +2653,7 @@
 
             applyCamera() {
                 const cam = this.currentCamera();
-                this.driveZoom = Math.min(19, Math.max(13, cam.zoom));
+                this.driveZoom = Math.round(Math.min(18, Math.max(15, cam.zoom)));
                 const extra = Math.max(0, cam.zoom - 18);
                 const scale = 1.15 + extra * 0.28;
 
@@ -1801,6 +2690,176 @@
                 this.notify('Camera reset to default', 'info');
             }
             
+            setPlacesHidden(hidden) {
+                this.placesHidden = !!hidden;
+                const panel = document.getElementById('placesPanel');
+                const tab = document.getElementById('placesShowBtn');
+                if (panel) panel.classList.toggle('places-hidden', this.placesHidden);
+                if (tab) tab.classList.toggle('visible', this.placesHidden && !this.isNavigating);
+            }
+
+            loadPlaces() {
+                try {
+                    const raw = JSON.parse(localStorage.getItem('tesla_places_v1') || 'null');
+                    if (raw && typeof raw === 'object') {
+                        this.places.home = raw.home || null;
+                        this.places.work = raw.work || null;
+                        this.places.saved = Array.isArray(raw.saved) ? raw.saved : [];
+                        this.places.history = Array.isArray(raw.history) ? raw.history : [];
+                    }
+                } catch (_) {}
+                this.renderPlaces();
+            }
+
+            persistPlaces() {
+                try {
+                    localStorage.setItem('tesla_places_v1', JSON.stringify(this.places));
+                } catch (_) {}
+                this.renderPlaces();
+            }
+
+            placeLabel(p) {
+                if (!p) return '';
+                return p.name || p.address || 'Destination';
+            }
+
+            renderPlaces() {
+                const homeBtn = document.getElementById('goHomeBtn');
+                const workBtn = document.getElementById('goWorkBtn');
+                if (homeBtn) homeBtn.textContent = this.places.home ? ('🏠 ' + this.placeLabel(this.places.home)) : '🏠 Home';
+                if (workBtn) workBtn.textContent = this.places.work ? ('💼 ' + this.placeLabel(this.places.work)) : '💼 Work';
+                const list = document.getElementById('placesList');
+                if (!list) return;
+                const rows = this.placesTab === 'history' ? this.places.history : this.places.saved;
+                if (!rows.length) {
+                    list.innerHTML = '<div class="places-empty">' + (this.placesTab === 'history' ? 'No drives yet. GO or START to save history.' : 'No saved addresses. Add one above.') + '</div>';
+                    return;
+                }
+                list.innerHTML = rows.map((p) => {
+                    const when = p.at ? new Date(p.at).toLocaleString() : '';
+                    return `<div class="place-item">
+                        <div class="meta">
+                            <div class="name">${this.escapeHtml(this.placeLabel(p))}</div>
+                            <div class="addr">${this.escapeHtml(p.address || '')}</div>
+                            ${when ? '<div class="when">' + this.escapeHtml(when) + '</div>' : ''}
+                        </div>
+                        <button type="button" class="place-go" data-place-go="${p.id}" data-place-kind="${this.placesTab}">GO</button>
+                        <button type="button" class="place-del" data-place-del="${p.id}" data-place-kind="${this.placesTab}" title="Remove">✕</button>
+                    </div>`;
+                }).join('');
+            }
+
+            escapeHtml(s) {
+                return String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            }
+
+            makePlace(name, address, coords) {
+                return {
+                    id: 'p' + Date.now() + Math.floor(Math.random() * 1000),
+                    name: name || address,
+                    address: address || name,
+                    lat: coords[0],
+                    lng: coords[1],
+                    at: Date.now()
+                };
+            }
+
+            async setSavedSlot(kind) {
+                const typed = (document.getElementById('toInput').value || document.getElementById('placeAddrInput').value || '').trim();
+                let coords = null;
+                let address = typed;
+                if (typed) {
+                    coords = await this.geocodeAddress(typed);
+                    if (!coords) {
+                        this.notify('❌ Address not found', 'error');
+                        return;
+                    }
+                } else if (this.destinationPos) {
+                    coords = this.destinationPos;
+                    address = typed || (document.getElementById('toInput').value || 'Saved place');
+                } else if (this.currentPos) {
+                    coords = this.currentPos;
+                    address = 'Current location';
+                } else {
+                    this.notify('Enter an address or enable GPS', 'error');
+                    return;
+                }
+                const name = kind === 'home' ? 'Home' : 'Work';
+                this.places[kind] = this.makePlace(name, address, coords);
+                this.persistPlaces();
+                this.notify((kind === 'home' ? '🏠 Home' : '💼 Work') + ' saved', 'success');
+            }
+
+            async addManualPlace() {
+                const name = document.getElementById('placeNameInput').value.trim();
+                const address = document.getElementById('placeAddrInput').value.trim() || document.getElementById('toInput').value.trim();
+                if (!address) {
+                    this.notify('Enter an address to save', 'error');
+                    return;
+                }
+                const coords = await this.geocodeAddress(address);
+                if (!coords) {
+                    this.notify('❌ Address not found', 'error');
+                    return;
+                }
+                this.places.saved.unshift(this.makePlace(name || address, address, coords));
+                this.places.saved = this.places.saved.slice(0, 40);
+                document.getElementById('placeNameInput').value = '';
+                document.getElementById('placeAddrInput').value = '';
+                this.persistPlaces();
+                this.notify('💾 Address saved', 'success');
+            }
+
+            recordDriveHistory(place) {
+                if (!place || place.lat == null || place.lng == null) return;
+                const entry = {
+                    id: 'h' + Date.now(),
+                    name: place.name || place.address || 'Destination',
+                    address: place.address || place.name || '',
+                    lat: place.lat,
+                    lng: place.lng,
+                    at: Date.now()
+                };
+                this.places.history = this.places.history.filter((p) => {
+                    const same = Math.abs(p.lat - entry.lat) < 0.0004 && Math.abs(p.lng - entry.lng) < 0.0004;
+                    return !same;
+                });
+                this.places.history.unshift(entry);
+                this.places.history = this.places.history.slice(0, 30);
+                this.persistPlaces();
+            }
+
+            goSavedSlot(kind) {
+                const place = this.places[kind];
+                if (!place) {
+                    this.notify('Set ' + kind + ' first', 'error');
+                    return;
+                }
+                this.routeToPlace(place);
+            }
+
+            goPlaceId(id, kind) {
+                const rows = kind === 'history' ? this.places.history : this.places.saved;
+                const place = rows.find((p) => p.id === id);
+                if (place) this.routeToPlace(place);
+            }
+
+            deletePlace(id, kind) {
+                if (kind === 'history') this.places.history = this.places.history.filter((p) => p.id !== id);
+                else this.places.saved = this.places.saved.filter((p) => p.id !== id);
+                this.persistPlaces();
+            }
+
+            routeToPlace(place) {
+                if (!this.currentPos) {
+                    this.notify('⚠️ Enable GPS first', 'error');
+                    return;
+                }
+                document.getElementById('toInput').value = place.address || place.name || '';
+                this._pendingDest = place;
+                this.createRoute(this.currentPos, [place.lat, place.lng]);
+            }
+
             async calculateRoute() {
                 const fromValue = document.getElementById('fromInput').value.trim();
                 const toValue = document.getElementById('toInput').value.trim();
@@ -1824,6 +2883,7 @@
                     return;
                 }
                 
+                this._pendingDest = { name: toValue, address: toValue, lat: destCoords[0], lng: destCoords[1] };
                 this.createRoute(startCoords, destCoords);
             }
             
@@ -1870,6 +2930,10 @@
                 if (this.startMarker) this.map.removeLayer(this.startMarker);
                 if (this.destMarker) this.map.removeLayer(this.destMarker);
                 if (this.routing) this.map.removeControl(this.routing);
+                if (this.remainingHalo) {
+                    this.map.removeLayer(this.remainingHalo);
+                    this.remainingHalo = null;
+                }
                 if (this.remainingLine) {
                     this.map.removeLayer(this.remainingLine);
                     this.remainingLine = null;
@@ -1911,17 +2975,19 @@
                         
                         this.routeCoords = (route.coordinates || []).map(c => [c.lat, c.lng]);
                         this.routeProgressIndex = 0;
+                        this._glRouteIdx = -1;
                         this.offRouteHits = 0;
                         this.syncSimToRoute();
                         
+                        if (this.remainingHalo) {
+                            this.map.removeLayer(this.remainingHalo);
+                            this.remainingHalo = null;
+                        }
                         if (this.remainingLine) this.map.removeLayer(this.remainingLine);
-                        this.remainingLine = L.polyline(this.routeCoords, {
-                            color: '#3e6ae1',
-                            weight: 7,
-                            opacity: 0.95,
-                            lineJoin: 'round',
-                            lineCap: 'round'
-                        }).addTo(this.map);
+                        this.remainingLine = L.polyline(this.routeCoords, this.leafletRouteStyle()).addTo(this.map);
+                        this.applyRouteLineStyle();
+                        this.syncGlRoute();
+                        this.prefetchAheadTiles(true);
                         
                         this.baseDuration = Math.round(route.summary.totalTime / 60);
                         this.updateDurationDisplay();
@@ -1981,6 +3047,11 @@
                 document.getElementById('navBar').classList.remove('hidden');
                 document.getElementById('turnInstruction').classList.remove('hidden');
                 document.getElementById('controlPanel').classList.add('hidden-ui');
+                const placesPanel = document.getElementById('placesPanel');
+                if (placesPanel) placesPanel.classList.add('hidden-ui');
+                const placesTab = document.getElementById('placesShowBtn');
+                if (placesTab) placesTab.classList.remove('visible');
+                if (this._pendingDest) this.recordDriveHistory(this._pendingDest);
                 
                 this.compassMode = true;
                 document.getElementById('compassBtn').classList.add('active');
@@ -2010,6 +3081,9 @@
                 document.getElementById('navBar').classList.add('hidden');
                 document.getElementById('turnInstruction').classList.add('hidden');
                 document.getElementById('controlPanel').classList.remove('hidden-ui');
+                const placesPanel = document.getElementById('placesPanel');
+                if (placesPanel) placesPanel.classList.remove('hidden-ui');
+                this.setPlacesHidden(!!this.placesHidden);
                 
                 this.compassMode = false;
                 document.getElementById('compassBtn').classList.remove('active');
@@ -2019,6 +3093,7 @@
                 if (this.remainingLine && this.routeCoords.length) {
                     this.routeProgressIndex = 0;
                     this.remainingLine.setLatLngs(this.routeCoords);
+                    if (this.remainingHalo) this.remainingHalo.setLatLngs(this.routeCoords);
                 }
                 
                 this.notify('Navigation stopped', 'info');
@@ -2043,12 +3118,14 @@
                 if (this.routing) this.map.removeControl(this.routing);
                 if (this.startMarker) this.map.removeLayer(this.startMarker);
                 if (this.destMarker) this.map.removeLayer(this.destMarker);
+                if (this.remainingHalo) this.map.removeLayer(this.remainingHalo);
                 if (this.remainingLine) this.map.removeLayer(this.remainingLine);
                 
                 this.routing = null;
                 this.currentRoute = null;
                 this.startMarker = null;
                 this.destMarker = null;
+                this.remainingHalo = null;
                 this.remainingLine = null;
                 this.routeCoords = [];
                 this.routeProgressIndex = 0;
@@ -2249,6 +3326,8 @@
             }
 
             applyCarIcon() {
+                this.syncHudCar();
+                this.syncGlCar();
                 if (!this.userMarker) return;
                 const root = this.userMarker.getElement();
                 const cursor = root && root.querySelector('.user-cursor');
