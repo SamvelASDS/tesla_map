@@ -97,19 +97,41 @@
             background: #d9d5cc;
         }
         .map-stage.drive-gl .glmap { display: block; }
-        .map-stage.drive-gl .map-camera { visibility: hidden; }
+        .map-stage.drive-gl .map-camera {
+            display: none !important;
+            visibility: hidden;
+        }
         .hud-car {
             display: none;
             position: absolute;
             left: 50%;
             top: 75%;
-            width: 78px;
-            height: 78px;
-            transform: translate(-50%, -50%);
+            width: 72px;
+            height: 130px;
+            transform: translate(-50%, -58%) perspective(520px) rotateX(var(--car-tilt, 22deg));
+            transform-origin: 50% 78%;
             z-index: 6;
             pointer-events: none;
+            filter: drop-shadow(0 14px 18px rgba(0,0,0,0.55));
+            will-change: width, height, transform;
         }
+        .hud-car svg { width: 100%; height: 100%; display: block; overflow: visible; }
         .map-stage.drive-gl .hud-car { display: block; }
+        .traffic-car {
+            width: 48px;
+            height: 88px;
+            pointer-events: none;
+            line-height: 0;
+            will-change: width, height;
+        }
+        .traffic-car .car-3d {
+            width: 100%;
+            height: 100%;
+            transform: perspective(360px) rotateX(var(--car-tilt, 20deg));
+            transform-origin: 50% 82%;
+            filter: drop-shadow(0 8px 10px rgba(0,0,0,0.5));
+        }
+        .traffic-car svg { width: 100%; height: 100%; display: block; overflow: visible; }
         .gl-car {
             width: 78px;
             height: 78px;
@@ -435,6 +457,30 @@
             color: white;
             border-color: #ff9800;
         }
+        .traffic-btn[data-traffic="off"].active {
+            background: var(--tesla-blue);
+            color: white;
+            border-color: var(--tesla-blue);
+        }
+        .traffic-live {
+            min-width: 34px;
+            font-size: 11px;
+            font-weight: 800;
+            color: #8bc34a;
+            letter-spacing: 0.3px;
+        }
+        .traffic-live.warn { color: #ff9800; }
+        .traffic-live.bad { color: #e53935; }
+        .ya-traffic-tiles,
+        .leaflet-trafficPane-pane {
+            pointer-events: none;
+            visibility: visible !important;
+        }
+        .ya-traffic-tiles .leaflet-tile {
+            visibility: inherit !important;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+        }
         .quality-btn.active, .style-btn.active, .shape-btn.active {
             background: var(--tesla-blue);
             color: white;
@@ -637,8 +683,8 @@
             border: none !important;
         }
         .user-cursor {
-            width: 78px;
-            height: 78px;
+            width: 56px;
+            height: 80px;
             position: relative;
             transition: none;
             transform-origin: 50% 50%;
@@ -647,8 +693,8 @@
         }
         .user-cursor img,
         .user-cursor svg {
-            width: 78px;
-            height: 78px;
+            width: 56px;
+            height: 80px;
             display: block;
             filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
         }
@@ -666,7 +712,7 @@
             left: 12px;
             bottom: 110px;
             z-index: 2100;
-            width: 320px;
+            width: 340px;
             max-height: 78vh;
             overflow-y: auto;
             background: rgba(26, 26, 26, 0.96);
@@ -775,9 +821,13 @@
             cursor: pointer;
             min-width: 0;
         }
+        .car-mini .car-opt {
+            padding: 6px 2px 4px;
+            min-width: 44px;
+        }
         .car-opt img, .car-opt svg {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 48px;
             display: block;
             object-fit: contain;
             pointer-events: none;
@@ -795,10 +845,40 @@
             color: white;
             box-shadow: 0 0 0 1px var(--tesla-blue);
         }
-        .sim-field {
+        .sim-field input[type="text"],
+        .sim-route-box input,
+        .sim-route-box textarea {
+            flex: 1;
+            min-width: 0;
+            background: var(--tesla-gray);
+            border: 1px solid var(--tesla-light-gray);
+            border-radius: 6px;
+            color: var(--tesla-text);
+            padding: 8px 10px;
+            font-size: 13px;
+            outline: none;
+        }
+        .sim-route-box {
             display: flex;
-            align-items: center;
+            flex-direction: column;
             gap: 6px;
+            margin-bottom: 8px;
+        }
+        .sim-route-box label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            color: var(--tesla-text-dim);
+        }
+        .sim-route-box textarea {
+            min-height: 54px;
+            resize: vertical;
+            font-family: inherit;
+        }
+        .sim-route-hint {
+            font-size: 11px;
+            color: var(--tesla-text-dim);
+            line-height: 1.35;
             margin-bottom: 6px;
         }
         .sim-field label {
@@ -952,6 +1032,7 @@
             <div class="search-mode">
                 <button class="mode-btn" data-mode="osm">OpenStreetMap</button>
                 <button class="mode-btn active" data-mode="yandex">Yandex 🇦🇲</button>
+                <button class="mode-btn" data-mode="google">Google 🇨🇦</button>
             </div>
             
             <div class="input-row">
@@ -969,6 +1050,7 @@
                     <button class="style-btn" data-style="osm" title="Full OpenStreetMap detail">OSM</button>
                     <button class="style-btn active" data-style="clean" title="Clean roads, fewer labels">Clean</button>
                     <button class="style-btn" data-style="simple" title="Light map, minimal clutter">Simple</button>
+                    <button class="style-btn" data-style="night" title="Dark Tesla-style map">Night</button>
                 </div>
             </div>
             
@@ -1003,11 +1085,16 @@
             </div>
 
             <div class="traffic-toggle">
+                <span class="traffic-label">🚗 Car:</span>
+                <div class="traffic-buttons car-mini" id="carMiniPicker"></div>
+            </div>
+
+            <div class="traffic-toggle">
                 <span class="traffic-label">🚦 Traffic:</span>
                 <div class="traffic-buttons">
-                    <button class="traffic-btn" data-multiplier="1">None</button>
-                    <button class="traffic-btn active" data-multiplier="1.3">Light</button>
-                    <button class="traffic-btn" data-multiplier="1.6">Heavy</button>
+                    <button type="button" class="traffic-btn" data-traffic="off">Off</button>
+                    <button type="button" class="traffic-btn active" data-traffic="yandex" id="trafficProviderBtn">Yandex</button>
+                    <span class="traffic-live" id="trafficLive">live</span>
                 </div>
             </div>
             
@@ -1066,8 +1153,30 @@
             <button class="sim-btn sim-speed-btn warn" data-sim-speed="900">MAX</button>
         </div>
         <div class="sim-row">
-            <button id="simDemoBtn" class="sim-btn">Demo route</button>
+            <button id="simDemoBtn" class="sim-btn">Demo Yerevan</button>
             <button id="simDeviateBtn" class="sim-btn warn">Off-route</button>
+        </div>
+        <div class="sim-title" style="margin-top:8px;">EXACT ROUTE</div>
+        <div class="sim-route-hint">Address or lat,lng. Optional vias: one stop per line.</div>
+        <div class="sim-route-box">
+            <label for="simFromInput">FROM</label>
+            <input type="text" id="simFromInput" placeholder="Start address or 43.65,-79.38" autocomplete="off">
+        </div>
+        <div class="sim-route-box">
+            <label for="simToInput">TO</label>
+            <input type="text" id="simToInput" placeholder="Destination address or lat,lng" autocomplete="off">
+        </div>
+        <div class="sim-route-box">
+            <label for="simViaInput">VIA (optional)</label>
+            <textarea id="simViaInput" placeholder="Stop 1&#10;Stop 2"></textarea>
+        </div>
+        <div class="sim-row">
+            <button type="button" id="simUseGpsBtn" class="sim-btn">From GPS</button>
+            <button type="button" id="simUseMapBtn" class="sim-btn">From map</button>
+        </div>
+        <div class="sim-row">
+            <button type="button" id="simBuildRouteBtn" class="sim-btn play" style="flex:1">📍 Build route</button>
+            <button type="button" id="simBuildPlayBtn" class="sim-btn save" style="flex:1">▶ Build &amp; Play</button>
         </div>
         <div class="sim-title" style="margin-top:8px;">ROUTE LINE</div>
         <div class="sim-row" id="simRouteColors">
@@ -1094,8 +1203,8 @@
         </div>
         <div class="sim-field">
             <label>Zoom</label>
-            <input type="range" data-cam="zoom" min="15" max="18" step="1" value="18">
-            <input type="number" data-cam="zoom" min="15" max="18" step="1" value="18">
+            <input type="range" data-cam="zoom" min="15" max="21" step="1" value="18">
+            <input type="number" data-cam="zoom" min="15" max="21" step="1" value="18">
         </div>
         <div class="sim-row">
             <button id="camSaveBtn" class="sim-btn save">Save cam</button>
@@ -1141,6 +1250,7 @@
     <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
     <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
     <script>
+        const YA_TRF_REGIONS = [[2,29.4262,59.6337,30.7595,60.2448],[4,36.4446,50.5051,36.7225,50.6668],[5,40.8679,56.9467,41.1261,57.0703],[6,35.9877,54.4585,36.4025,54.6143],[8,36.0599,51.6207,36.3041,51.8335],[9,39.3799,52.4910,39.8118,52.7175],[10,35.9740,52.8954,36.2190,53.0406],[11,39.5369,54.5283,39.8995,54.8120],[14,35.7213,56.7832,36.0587,56.9359],[15,37.4987,54.0621,37.7384,54.2999],[16,39.7037,57.5256,40.0030,57.7754],[21,39.7333,59.1691,40.0229,59.2848],[22,20.2939,54.6309,20.6537,54.7788],[23,32.9329,68.8829,33.2941,69.0637],[24,31.1980,58.4709,31.4222,58.6508],[25,28.2540,57.7444,28.4634,57.8789],[35,38.7851,44.9783,39.1863,45.1538],[36,41.8036,44.9490,42.0837,45.1129],[37,47.8711,46.2597,48.2019,46.4709],[38,44.1089,48.4070,44.6874,48.8892],[39,39.4047,47.1534,39.8515,47.3551],[42,45.0550,54.1492,45.2965,54.2628],[43,48.8206,55.6031,49.3794,55.9308],[44,53.0076,56.7165,53.3921,56.9877],[45,47.0962,56.0513,47.4375,56.1567],[46,49.3436,58.4820,49.7981,58.6848],[47,43.5476,56.1853,44.1194,56.4236],[48,54.9884,51.6830,55.3971,51.9060],[49,44.8298,53.0989,45.2308,53.2889],[50,55.8024,57.8678,56.6565,58.1772],[51,49.7322,53.0919,50.3904,53.5512],[54,60.0068,56.5938,60.9433,56.9827],[55,65.2768,57.0015,65.8150,57.2728],[56,61.1436,54.9910,61.5921,55.3210],[62,92.6275,55.9121,93.1208,56.1338],[63,104.0590,52.2092,104.4728,52.4218],[64,85.9091,55.2573,86.2630,55.5365],[65,82.7519,54.8036,83.1602,55.1994],[66,73.0976,54.8243,73.6602,55.4190],[67,84.8275,56.3778,85.1492,56.6888],[68,113.1335,51.9639,113.6101,52.1724],[75,131.8400,43.0575,132.2386,43.2892],[76,134.8980,48.3268,135.2212,48.6030],[146,34.0284,44.8909,34.1992,45.0043],[157,27.3744,53.7939,28.0806,53.9716],[158,30.2258,53.7926,30.4745,53.9702],[162,76.7383,43.0329,77.1668,43.4038],[163,71.2239,50.9295,71.7421,51.3513],[164,72.9820,49.7355,73.2558,49.9929],[172,55.7786,54.5007,56.2974,54.9601],[191,34.1911,53.1838,34.4966,53.3746],[192,40.1649,56.0519,40.6805,56.2176],[193,39.0131,51.4850,39.6719,51.9028],[194,45.8054,51.3923,46.2093,51.6889],[195,48.2375,54.1915,48.7257,54.4100],[197,83.5330,53.1870,83.9081,53.4828],[198,107.4084,51.7102,107.9584,52.0277],[213,36.8031,55.1422,37.9675,56.0213],[221,69.3021,42.1052,69.9358,42.4792],[236,52.1834,55.6356,52.5489,55.7893],[237,86.8591,53.6404,87.4509,53.9483],[239,39.1497,43.3951,40.0104,44.0299],[240,49.1928,53.4464,49.7761,53.5972],[968,37.6823,59.0669,38.0436,59.1823],[970,37.6299,44.6586,37.8703,44.7874],[971,38.7929,47.1885,38.9701,47.2897],[973,73.2197,61.2226,73.6295,61.3580],[974,132.6093,42.7130,133.1529,42.9232],[1058,39.0306,44.0740,39.1198,44.1455],[1091,76.3422,60.8341,76.9629,61.0678],[1107,37.2520,44.8583,37.3752,44.9852],[10253,49.7641,40.2985,49.9899,40.4374],[10254,46.2974,40.6336,46.4363,40.7561],[10262,44.3621,40.0657,44.6210,40.2417],[10274,23.7094,53.5990,23.9839,53.7599],[10334,66.8343,39.5910,67.0545,39.7281],[10335,69.1217,41.1577,69.5258,41.4225],[10493,24.7827,59.9225,25.2545,60.2978],[10522,20.2215,44.6881,20.6235,44.9428],[11474,23.9324,56.8574,24.3249,57.0862],[11475,25.0245,54.5688,25.4814,54.8324],[11481,24.5503,59.3518,24.9263,59.5915],[11498,54.2111,24.1661,55.0242,24.9998],[11499,54.8460,24.7970,55.5645,25.3579],[11501,35.2293,36.9399,35.4570,37.0666],[11503,32.4939,39.8106,32.9922,40.0701],[11504,28.8247,40.1512,29.2323,40.2905],[11505,26.9485,38.2635,27.3210,38.5625],[11508,28.4014,40.8027,29.4155,41.2256],[11511,30.5722,36.8283,30.8683,37.0014]];
         class TeslaNav {
             constructor() {
                 this.map = null;
@@ -1153,9 +1263,24 @@
                 this.speed = 0;
                 this.watchId = null;
                 this.isNavigating = false;
-                this.trafficMultiplier = 1.3;
+                this.trafficMultiplier = 1;
+                this.yandexTraffic = true;
+                this._yaTm = Math.floor(Date.now() / 1000);
+                this._yaLevel = null;
+                this._yaStyle = '';
+                this._yaRegions = null;
+                this.trafficLayer = null;
+                try {
+                    const savedT = localStorage.getItem('tesla_yandex_traffic');
+                    if (savedT === '0') this.yandexTraffic = false;
+                } catch (_) {}
                 this.baseDuration = 0;
                 this.searchMode = 'yandex';
+                this.googleApiKey = '';
+                try {
+                    this.googleApiKey = localStorage.getItem('tesla_google_key') || '';
+                } catch (_) {}
+                this._inCanada = false;
                 this.instructions = [];
                 this.currentInstruction = 0;
                 
@@ -1173,10 +1298,11 @@
                 this.glMap = null;
                 this.glCar = null;
                 this.glDest = null;
-                this.carStyle = 'halo';
+                this.carStyle = 'my';
+                this.trafficCars = [];
                 try {
                     const savedCar = localStorage.getItem('tesla_car_style');
-                    if (savedCar && ['pulse', 'cyber', 'ember', 'halo'].includes(savedCar)) this.carStyle = savedCar;
+                    if (savedCar && ['m3', 'my', 'ms', 'mx', 'pulse', 'cyber', 'ember', 'halo'].includes(savedCar)) this.carStyle = savedCar;
                 } catch (_) {}
                 this.mapQuality = 'high';
                 this.mapStyle = 'clean';
@@ -1184,7 +1310,7 @@
                     const savedQ = localStorage.getItem('tesla_map_quality');
                     if (savedQ === 'low' || savedQ === 'med' || savedQ === 'high') this.mapQuality = savedQ;
                     const savedS = localStorage.getItem('tesla_map_style');
-                    if (savedS === 'osm' || savedS === 'clean' || savedS === 'simple') this.mapStyle = savedS;
+                    if (savedS === 'osm' || savedS === 'clean' || savedS === 'simple' || savedS === 'night') this.mapStyle = savedS;
                 } catch (_) {}
                 this._lastGoodBearing = null;
                 this._headingAt = 0;
@@ -1234,7 +1360,7 @@
                 const mapOpts = {
                     zoomControl: true,
                     attributionControl: false,
-                    maxZoom: 18,
+                    maxZoom: 21,
                     zoomSnap: 1,
                     zoomDelta: 1,
                     fadeAnimation: false,
@@ -1251,6 +1377,7 @@
                 this.setPlacesHidden(false);
                 this.restoreDeveloperMode();
                 this.registerTileCache();
+                this.startYandexTraffic();
                 this.notify('Ready! 🚗', 'success');
             }
             
@@ -1260,30 +1387,11 @@
                     med:  { keepBuffer: 6,  maxNativeZoom: 18, updateWhenIdle: false, updateInterval: 200, size: 170 },
                     high: { keepBuffer: 8,  maxNativeZoom: 19, updateWhenIdle: false, updateInterval: 120, size: 200 }
                 };
-                const styles = {
-                    osm: {
-                        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        maxNative: 19,
-                        subdomains: 'abc',
-                        attrib: '© OpenStreetMap'
-                    },
-                    clean: {
-                        url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-                        maxNative: 20,
-                        subdomains: 'abcd',
-                        attrib: '© OpenStreetMap © CARTO'
-                    },
-                    simple: {
-                        url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                        maxNative: 20,
-                        subdomains: 'abcd',
-                        attrib: '© OpenStreetMap © CARTO'
-                    }
-                };
                 const q = presets[level] || presets.high;
                 this.mapQuality = presets[level] ? level : 'high';
-                const style = styles[this.mapStyle] || styles.clean;
-                this.mapStyle = styles[this.mapStyle] ? this.mapStyle : 'clean';
+                const style = this.tileConfig();
+                this.mapStyle = (this.mapStyle === 'osm' || this.mapStyle === 'clean' || this.mapStyle === 'simple' || this.mapStyle === 'night')
+                    ? this.mapStyle : 'clean';
 
                 if (this.baseTileLayer) {
                     this.map.removeLayer(this.baseTileLayer);
@@ -1291,7 +1399,7 @@
                 this.baseTileLayer = L.tileLayer(style.url, {
                     attribution: style.attrib,
                     subdomains: style.subdomains,
-                    maxZoom: style.maxNative,
+                    maxZoom: 21,
                     maxNativeZoom: Math.min(q.maxNativeZoom, style.maxNative),
                     keepBuffer: q.keepBuffer,
                     updateWhenIdle: q.updateWhenIdle,
@@ -1303,7 +1411,7 @@
                 this._tileFail = 0;
                 this.baseTileLayer.on('tileerror', () => {
                     this._tileFail = (this._tileFail || 0) + 1;
-                    if (this._tileFail >= 8 && this.mapStyle !== 'osm') {
+                    if (this._tileFail >= 8 && this.mapStyle !== 'osm' && !this.useCanadaGoogle()) {
                         this.mapStyle = 'osm';
                         this.applyMapQuality(this.mapQuality, true);
                         this.notify('Map tiles switched to OSM', 'info');
@@ -1324,7 +1432,8 @@
                 } catch (_) {}
                 if (!silent) {
                     const qLabel = this.mapQuality === 'low' ? 'Low data' : this.mapQuality === 'high' ? 'High detail' : 'Balanced';
-                    const sLabel = this.mapStyle === 'osm' ? 'OSM' : this.mapStyle === 'simple' ? 'Simple' : 'Clean';
+                    let sLabel = this.mapStyle === 'osm' ? 'OSM' : this.mapStyle === 'simple' ? 'Simple' : this.mapStyle === 'night' ? 'Night' : 'Clean';
+                    if (this.useCanadaGoogle() && this.mapStyle !== 'night') sLabel = 'Google CA';
                     this.notify('🗺️ ' + sLabel + ' · ' + qLabel, 'info');
                 }
                 this.applyGlStyle();
@@ -1375,10 +1484,62 @@
                         maxNative: 20,
                         subdomains: 'abcd',
                         attrib: '© OpenStreetMap © CARTO'
+                    },
+                    night: {
+                        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+                        maxNative: 20,
+                        subdomains: 'abcd',
+                        attrib: '© OpenStreetMap © CARTO'
                     }
                 };
-                const style = styles[this.mapStyle] || styles.clean;
-                return style;
+                if (this.useCanadaGoogle() && this.mapStyle !== 'night') {
+                    const g = {
+                        url: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=en',
+                        maxNative: 21,
+                        subdomains: '0123',
+                        attrib: '© Google'
+                    };
+                    styles.osm = g;
+                    styles.clean = g;
+                    styles.simple = g;
+                }
+                return styles[this.mapStyle] || styles.clean;
+            }
+
+            isInCanada(lat, lon) {
+                if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) return false;
+                // Mainland + provinces rough bounds (excl. far north detail is still ok).
+                return lat >= 41.6 && lat <= 83.2 && lon >= -141.1 && lon <= -52.5;
+            }
+
+            useCanadaGoogle() {
+                if (this.searchMode === 'google') return true;
+                if (this.currentPos) return this.isInCanada(this.currentPos[0], this.currentPos[1]);
+                return !!this._inCanada;
+            }
+
+            ensureGoogleKey() {
+                if (this.googleApiKey) return this.googleApiKey;
+                try {
+                    this.googleApiKey = localStorage.getItem('tesla_google_key') || '';
+                } catch (_) {}
+                if (!this.googleApiKey) {
+                    const entered = window.prompt('Google Maps API key for Canada (geocoding). Leave blank to use OSM search.');
+                    if (entered && entered.trim()) {
+                        this.googleApiKey = entered.trim();
+                        try { localStorage.setItem('tesla_google_key', this.googleApiKey); } catch (_) {}
+                    }
+                }
+                return this.googleApiKey;
+            }
+
+            googleTrafficTileUrl(x, y, z) {
+                const s = String(Math.abs(x + y) % 4);
+                return `https://mt${s}.google.com/vt?lyrs=h@159000000,traffic&x=${x}&y=${y}&z=${z}&hl=en`;
+            }
+
+            googleTrafficTemplate() {
+                return 'https://mt{s}.google.com/vt?lyrs=h@159000000,traffic&x={x}&y={y}&z={z}&hl=en';
             }
 
             tileUrls() {
@@ -1387,7 +1548,7 @@
             }
 
             integerZoom() {
-                return Math.round(Math.min(18, Math.max(15, this.driveZoom)));
+                return Math.round(Math.min(21, Math.max(15, this.driveZoom)));
             }
 
             latLngToTile(lat, lng, z) {
@@ -1437,9 +1598,274 @@
                 navigator.serviceWorker.register('./sw.js').catch(() => {});
             }
 
+            latToYandexTileY(lat, z) {
+                const R = 6378137;
+                const e = Math.sqrt(1 - Math.pow(6356752.314245179 / R, 2));
+                const phi = lat * Math.PI / 180;
+                const con = e * Math.sin(phi);
+                const ts = Math.tan(Math.PI / 4 - phi / 2) / Math.pow((1 - con) / (1 + con), e / 2);
+                const yMeters = -R * Math.log(Math.max(ts, 1e-10));
+                const yNorm = 0.5 - yMeters / (2 * Math.PI * R);
+                return Math.floor(yNorm * (2 ** z));
+            }
+
+            yandexTileUrl(x, yMerc, z) {
+                const n = 2 ** z;
+                const lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * (yMerc + 0.5) / n))) * 180 / Math.PI;
+                const y = this.latToYandexTileY(lat, z);
+                const tm = this._yaTm || Math.floor(Date.now() / 1000);
+                return `https://core-jams-rdr-cache.maps.yandex.net/tiles?l=trf,trfe&x=${x}&y=${y}&z=${z}&scale=1&tm=${tm}`;
+            }
+
+            yandexEmptyTile() {
+                return 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+            }
+
+            yandexNearDriveTile(x, y, z) {
+                if (z < 16) return false;
+                const pos = this.currentPos || [40.1872, 44.5152];
+                const t = this.latLngToTile(pos[0], pos[1], z);
+                const r = z >= 17 ? 3 : 2;
+                return Math.abs(x - t.x) <= r && Math.abs(y - t.y) <= r;
+            }
+
+            yandexTrafficTemplate() {
+                const tm = this._yaTm || Math.floor(Date.now() / 1000);
+                return `https://core-jams-rdr-cache.maps.yandex.net/tiles?l=trf,trfe&x={x}&y={y}&z={z}&scale=1&tm=${tm}`;
+            }
+
+            startYandexTraffic() {
+                this.syncTrafficButtons();
+                if (this.yandexTraffic) this.refreshYandexTraffic(true);
+                if (!this._yaTimer) {
+                    this._yaTimer = setInterval(() => this.refreshYandexTraffic(false), 150000);
+                }
+            }
+
+            setYandexTraffic(on) {
+                this.yandexTraffic = !!on;
+                try { localStorage.setItem('tesla_yandex_traffic', on ? '1' : '0'); } catch (_) {}
+                this.syncTrafficButtons();
+                if (!on) {
+                    this.trafficMultiplier = 1;
+                    this._yaLevel = null;
+                    this.updateTrafficLive();
+                    if (this.baseDuration > 0) this.updateDurationDisplay();
+                    if (this.trafficLayer && this.map) {
+                        this.map.removeLayer(this.trafficLayer);
+                        this.trafficLayer = null;
+                    }
+                    this.syncGlTraffic();
+                    this.notify('Traffic off', 'info');
+                    return;
+                }
+                this.refreshYandexTraffic(true);
+                this.notify(this.useCanadaGoogle() ? '🚦 Google traffic (Canada)' : '🚦 Yandex traffic live', 'success');
+            }
+
+            syncTrafficButtons() {
+                const providerBtn = document.getElementById('trafficProviderBtn');
+                if (providerBtn) providerBtn.textContent = this.useCanadaGoogle() ? 'Google' : 'Yandex';
+                document.querySelectorAll('.traffic-btn').forEach((b) => {
+                    b.classList.toggle('active', this.yandexTraffic ? b.dataset.traffic === 'yandex' : b.dataset.traffic === 'off');
+                });
+                this.updateTrafficLive();
+            }
+
+            updateTrafficLive() {
+                const el = document.getElementById('trafficLive');
+                if (!el) return;
+                el.classList.remove('warn', 'bad');
+                if (!this.yandexTraffic) {
+                    el.textContent = '';
+                    return;
+                }
+                if (this.useCanadaGoogle()) {
+                    el.textContent = 'CA';
+                    return;
+                }
+                const pos = this.currentPos;
+                if (pos && !this.inYandexTrafficCoverage(pos[0], pos[1])) {
+                    el.textContent = 'n/a';
+                    el.classList.add('warn');
+                    return;
+                }
+                if (this._yaLevel == null || isNaN(this._yaLevel)) {
+                    el.textContent = 'live';
+                    return;
+                }
+                el.textContent = this._yaLevel + '/10';
+                if (this._yaLevel >= 7) el.classList.add('bad');
+                else if (this._yaLevel >= 4) el.classList.add('warn');
+            }
+
+            yandexRegionId(lat, lon) {
+                for (let i = 0; i < YA_TRF_REGIONS.length; i++) {
+                    const r = YA_TRF_REGIONS[i];
+                    if (lon >= r[1] && lat >= r[2] && lon <= r[3] && lat <= r[4]) return String(r[0]);
+                }
+                return null;
+            }
+
+            applyYandexLevel() {
+                const pos = this.currentPos || [40.1872, 44.5152];
+                const rid = this.yandexRegionId(pos[0], pos[1]);
+                this._yaLevel = null;
+                this._yaStyle = '';
+                if (rid && this._yaRegions && this._yaRegions.length) {
+                    const rec = this._yaRegions.find((x) => String(x.regionId) === rid);
+                    if (rec) {
+                        this._yaLevel = parseInt(rec.level, 10);
+                        this._yaStyle = rec.style || '';
+                    }
+                }
+                if (this.yandexTraffic && this._yaLevel != null && !isNaN(this._yaLevel)) {
+                    this.trafficMultiplier = 1 + this._yaLevel * 0.12;
+                } else if (this.yandexTraffic) {
+                    this.trafficMultiplier = 1.1;
+                } else {
+                    this.trafficMultiplier = 1;
+                }
+                if (this.baseDuration > 0) this.updateDurationDisplay();
+                this.updateTrafficLive();
+                if (this.isNavigating && this.glMap) this.seedTrafficCars(false);
+            }
+
+            async refreshYandexTraffic(force = false) {
+                if (!this.yandexTraffic) return;
+                if (this.useCanadaGoogle()) {
+                    this._yaLevel = 4;
+                    this.trafficMultiplier = 1.35;
+                    if (this.baseDuration > 0) this.updateDurationDisplay();
+                    this.updateTrafficLive();
+                    if (!(this.isNavigating && this.glMap)) this.applyYandexTrafficLayer();
+                    if (this.isNavigating && this.glMap) this.syncGlTraffic(false);
+                    else this.syncGlTraffic(true);
+                    if (this.isNavigating && this.glMap) this.seedTrafficCars(false);
+                    return;
+                }
+                const now = Date.now();
+                if (!force && this._yaAt && now - this._yaAt < 120000) return;
+                this._yaAt = now;
+                try {
+                    const res = await fetch('https://core-jams-rdr-cache.maps.yandex.net/trf/stat.js', { cache: 'no-store' });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data && data.timestamp) this._yaTm = parseInt(data.timestamp, 10) || this._yaTm;
+                        this._yaRegions = data && data.regions ? data.regions : this._yaRegions;
+                        this.applyYandexLevel();
+                    } else {
+                        this._yaTm = Math.floor(Date.now() / 1000);
+                    }
+                } catch (_) {
+                    this._yaTm = Math.floor(Date.now() / 1000);
+                }
+                if (!(this.isNavigating && this.glMap)) this.applyYandexTrafficLayer();
+                if (this.isNavigating && this.glMap) this.syncGlTraffic(false);
+                else this.syncGlTraffic(true);
+            }
+
+            applyYandexTrafficLayer() {
+                if (!this.map) return;
+                if (this.isNavigating && this.glMap) {
+                    if (this.trafficLayer && this.map.hasLayer(this.trafficLayer)) {
+                        this.map.removeLayer(this.trafficLayer);
+                    }
+                    return;
+                }
+                if (this.trafficLayer) {
+                    this.map.removeLayer(this.trafficLayer);
+                    this.trafficLayer = null;
+                }
+                if (!this.yandexTraffic) return;
+                if (!this.map.getPane('trafficPane')) {
+                    this.map.createPane('trafficPane');
+                    this.map.getPane('trafficPane').style.zIndex = 350;
+                    this.map.getPane('trafficPane').style.pointerEvents = 'none';
+                }
+                const nav = this;
+                const canada = this.useCanadaGoogle();
+                this.trafficLayer = new (L.TileLayer.extend({
+                    getTileUrl(coords) {
+                        if (canada) return nav.googleTrafficTileUrl(coords.x, coords.y, coords.z);
+                        return nav.yandexTileUrl(coords.x, coords.y, coords.z);
+                    }
+                }))(canada ? this.googleTrafficTemplate() : this.yandexTrafficTemplate(), {
+                    pane: 'trafficPane',
+                    opacity: canada ? 0.92 : 0.88,
+                    maxZoom: 21,
+                    maxNativeZoom: canada ? 20 : 17,
+                    tileSize: 256,
+                    subdomains: canada ? '0123' : 'abc',
+                    keepBuffer: 2,
+                    updateWhenIdle: false,
+                    updateWhenZooming: false,
+                    className: 'ya-traffic-tiles',
+                    errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+                }).addTo(this.map);
+            }
+
+            yaTrafficBeforeId() {
+                const prefer = ['tesla-buildings', 'building', 'building-3d', 'building-top', 'building-color'];
+                for (let i = 0; i < prefer.length; i++) {
+                    if (this.glMap.getLayer(prefer[i])) return prefer[i];
+                }
+                const layers = this.glMap.getStyle().layers || [];
+                const hit = layers.find((l) => l && l.id && /building/i.test(l.id));
+                if (hit) return hit.id;
+                if (this.glMap.getLayer('route-glow')) return 'route-glow';
+                if (this.glMap.getLayer('route-line')) return 'route-line';
+                return undefined;
+            }
+
+            syncGlTraffic(force = true) {
+                if (!this.glMap || !this.glMap.isStyleLoaded()) return;
+                const has = !!this.glMap.getSource('ya-traffic');
+                if (!this.yandexTraffic) {
+                    try {
+                        if (this.glMap.getLayer('ya-traffic')) this.glMap.removeLayer('ya-traffic');
+                        if (has) this.glMap.removeSource('ya-traffic');
+                    } catch (_) {}
+                    return;
+                }
+                if (has && !force) return;
+                try {
+                    if (this.glMap.getLayer('ya-traffic')) this.glMap.removeLayer('ya-traffic');
+                    if (has) this.glMap.removeSource('ya-traffic');
+                } catch (_) {}
+                this.glMap.addSource('ya-traffic', {
+                    type: 'raster',
+                    tiles: this.useCanadaGoogle()
+                        ? ['https://mt0.google.com/vt?lyrs=h@159000000,traffic&x={x}&y={y}&z={z}&hl=en',
+                           'https://mt1.google.com/vt?lyrs=h@159000000,traffic&x={x}&y={y}&z={z}&hl=en',
+                           'https://mt2.google.com/vt?lyrs=h@159000000,traffic&x={x}&y={y}&z={z}&hl=en',
+                           'https://mt3.google.com/vt?lyrs=h@159000000,traffic&x={x}&y={y}&z={z}&hl=en']
+                        : [this.yandexTrafficTemplate()],
+                    tileSize: 256,
+                    minzoom: 12,
+                    maxzoom: this.useCanadaGoogle() ? 20 : 17,
+                    attribution: this.useCanadaGoogle() ? 'Google Traffic' : 'Yandex Traffic'
+                });
+                this.glMap.addLayer({
+                    id: 'ya-traffic',
+                    type: 'raster',
+                    source: 'ya-traffic',
+                    minzoom: 12,
+                    paint: {
+                        'raster-opacity': this.useCanadaGoogle() ? 0.9 : 0.88,
+                        'raster-fade-duration': 0,
+                        'raster-resampling': 'nearest'
+                    }
+                });
+                if (this.glMap.getLayer('route-glow')) this.glMap.moveLayer('ya-traffic', 'route-glow');
+                else if (this.glMap.getLayer('route-line')) this.glMap.moveLayer('ya-traffic', 'route-line');
+            }
+
             glStyleUrl() {
+                if (this.useCanadaGoogle() && this.mapStyle !== 'night') return null; // raster Google via glStyleSpec
                 if (this.mapStyle === 'simple') return 'https://tiles.openfreemap.org/styles/positron';
                 if (this.mapStyle === 'osm') return 'https://tiles.openfreemap.org/styles/bright';
+                if (this.mapStyle === 'night') return 'https://tiles.openfreemap.org/styles/dark';
                 return 'https://tiles.openfreemap.org/styles/liberty';
             }
 
@@ -1453,7 +1879,7 @@
                             type: 'raster',
                             tiles: this.tileUrls(),
                             tileSize: 256,
-                            maxzoom: Math.min(q.maxNativeZoom, style.maxNative, 18),
+                            maxzoom: Math.min(21, Math.max(q.maxNativeZoom, style.maxNative || 18)),
                             attribution: style.attrib
                         }
                     },
@@ -1469,7 +1895,7 @@
                 this._glStyleUrl = this.glStyleUrl();
                 this.glMap = new maplibregl.Map({
                     container: el,
-                    style: this._glStyleUrl,
+                    style: this._glStyleUrl || this.glStyleSpec(),
                     center: [start[1], start[0]],
                     zoom: this.integerZoom(),
                     pitch: this.currentCamera().angle,
@@ -1477,14 +1903,29 @@
                     attributionControl: false,
                     fadeDuration: 0,
                     maxPitch: 70,
-                    maxZoom: 18,
+                    maxZoom: 21,
                     minZoom: 12,
                     interactive: false,
                     pixelRatio: 1,
                     antialias: true,
-                    renderWorldCopies: false
+                    renderWorldCopies: false,
+                    transformRequest: (url, type) => {
+                        if (type === 'Tile' && url.includes('core-jams-rdr-cache') && url.includes('l=trf')) {
+                            try {
+                                const u = new URL(url);
+                                const x = +u.searchParams.get('x');
+                                const y = +u.searchParams.get('y');
+                                const z = +u.searchParams.get('z');
+                                if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return { url };
+                                if (z < 15) return { url: this.yandexEmptyTile() };
+                                return { url: this.yandexTileUrl(x, y, z) };
+                            } catch (_) {}
+                        }
+                        return { url };
+                    }
                 });
                 this.glMap.on('load', () => {
+                    this.polishDriveMap();
                     this.syncGlRoute();
                     this.syncHudCar();
                     this.cacheDrivePadding();
@@ -1505,10 +1946,60 @@
             applyGlStyle() {
                 if (!this.glMap) return;
                 const url = this.glStyleUrl();
-                if (this._glStyleUrl === url) return;
+                const key = url || ('raster:' + (this.useCanadaGoogle() ? 'google' : this.mapStyle));
+                if (this._glStyleKey === key) return;
+                this._glStyleKey = key;
                 this._glStyleUrl = url;
-                this.glMap.setStyle(url);
-                this.glMap.once('style.load', () => this.syncGlRoute());
+                this.glMap.setStyle(url || this.glStyleSpec());
+                this.glMap.once('style.load', () => {
+                    this.polishDriveMap();
+                    this.syncGlRoute();
+                    if (this.yandexTraffic) this.syncGlTraffic(true);
+                });
+            }
+
+            polishDriveMap() {
+                if (!this.glMap || !this.glMap.isStyleLoaded()) return;
+                const hide = /poi|housenumber|housename|attraction|shop|airport-label|ferry|park_outline/i;
+                const dim = /place-|city|town|village|suburb|neighbourhood|continent|water_name|waterway-name/i;
+                (this.glMap.getStyle().layers || []).forEach((layer) => {
+                    if (!layer || !layer.id || !this.glMap.getLayer(layer.id)) return;
+                    try {
+                        if (hide.test(layer.id)) {
+                            this.glMap.setLayoutProperty(layer.id, 'visibility', 'none');
+                        } else if (layer.type === 'symbol' && dim.test(layer.id)) {
+                            this.glMap.setPaintProperty(layer.id, 'text-opacity', 0.5);
+                        }
+                    } catch (_) {}
+                });
+                if (this.glMap.getSource('openmaptiles') && !this.glMap.getLayer('tesla-buildings')) {
+                    const night = this.mapStyle === 'night';
+                    try {
+                        this.glMap.addLayer({
+                            id: 'tesla-buildings',
+                            source: 'openmaptiles',
+                            'source-layer': 'building',
+                            type: 'fill-extrusion',
+                            minzoom: 14,
+                            paint: {
+                                'fill-extrusion-color': night ? '#2c2c32' : '#cfc8bc',
+                                'fill-extrusion-height': ['coalesce', ['get', 'render_height'], ['get', 'height'], 10],
+                                'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0],
+                                'fill-extrusion-opacity': 0.52
+                            }
+                        });
+                    } catch (_) {}
+                }
+                if (this.isNavigating) {
+                    clearTimeout(this._yaGlTimer);
+                    this._yaGlTimer = setTimeout(() => {
+                        if (this.glMap && this.yandexTraffic) {
+                            this.syncGlTraffic(!this.glMap.getSource('ya-traffic'));
+                        }
+                    }, 400);
+                } else {
+                    this.syncGlTraffic(!this.glMap.getSource('ya-traffic'));
+                }
             }
 
             cacheDrivePadding() {
@@ -1859,6 +2350,9 @@
                 const h = this.glMap.getContainer().clientHeight;
                 if (!this._camPad || this._camPadH !== h || !this._camPad.top) this.cacheDrivePadding();
                 const padReady = this._camPad && this._camPad.top > 0;
+                this.tickTrafficCars(dt);
+                const hud = document.getElementById('hudCar');
+                if (hud) this.applyCarScale(hud, 'player');
                 if (padReady && movedM < 0.16 && Math.abs(db) < 0.35 && this._camSettled) {
                     this.hideGlCar();
                     return;
@@ -1883,6 +2377,34 @@
                 if (!el) return;
                 el.className = 'hud-car car-' + this.carStyle;
                 el.innerHTML = this.teslaCarHtml();
+                this.applyCarScale(el, 'player');
+            }
+
+            applyCarScale(el, role = 'traffic') {
+                if (!el) return;
+                const size = this.carPixelSize(role);
+                el.style.width = size.w + 'px';
+                el.style.height = size.h + 'px';
+                const pitch = this.glMap ? this.glMap.getPitch() : (this.currentCamera().angle || 56);
+                const tilt = Math.max(8, Math.min(28, 8 + pitch * 0.28));
+                el.style.setProperty('--car-tilt', tilt.toFixed(1) + 'deg');
+            }
+
+            carPixelSize(role = 'traffic') {
+                const z = this.glMap && this.glMap.getZoom ? this.glMap.getZoom() : this.integerZoom();
+                const lat = (this.currentPos && this.currentPos[0]) || 40.18;
+                const mpp = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, z);
+                // Real Tesla ~4.7×1.9 m. Boost so cars read next to extruded buildings.
+                const lengthM = role === 'player' ? 5.0 : 4.6;
+                const widthM = role === 'player' ? 2.15 : 2.0;
+                const boost = role === 'player' ? 4.2 : 3.4;
+                const minH = role === 'player' ? 88 : 42;
+                const maxH = role === 'player' ? 220 : 150;
+                const minW = role === 'player' ? 44 : 22;
+                const maxW = role === 'player' ? 110 : 72;
+                const h = Math.round(Math.max(minH, Math.min(maxH, (lengthM / mpp) * boost)));
+                const w = Math.round(Math.max(minW, Math.min(maxW, (widthM / mpp) * boost)));
+                return { w, h };
             }
 
             syncGlRoute() {
@@ -1905,6 +2427,9 @@
                     }
                     this.ensureGlRouteLayers();
                     this.applyGlRouteStyle();
+                    if (this.glMap.getLayer('ya-traffic') && this.glMap.getLayer('route-glow')) {
+                        this.glMap.moveLayer('ya-traffic', 'route-glow');
+                    }
                     this.syncGlDest();
                 };
                 if (this.glMap.isStyleLoaded()) ready();
@@ -2129,12 +2654,16 @@
                 this._driveFocus = null;
                 if (useGl) {
                     this.ensureGlMap();
+                    this.applyYandexTrafficLayer();
                     this.applyGlStyle();
                     this.syncGlRoute();
                     this.syncGlCar();
+                    this.seedTrafficCars(true);
                     this.startDriveCam();
                 } else {
                     this.stopDriveCam();
+                    this.clearTrafficCars();
+                    this.applyYandexTrafficLayer();
                 }
                 const kick = () => {
                     if (this.glMap) this.glMap.resize();
@@ -2354,6 +2883,19 @@
                 const { latitude, longitude, speed, heading } = pos.coords;
                 
                 this.currentPos = [latitude, longitude];
+                if (!this._regionBooted) {
+                    this._regionBooted = true;
+                    this.preferLocalSearchMode();
+                    if (this.isInCanada(latitude, longitude)) {
+                        this.notify('🇨🇦 Canada: Google streets + traffic', 'success');
+                    } else if (!this.inYandexTrafficCoverage(latitude, longitude) && this.yandexTraffic) {
+                        this.notify('Yandex traffic is limited here — use OSM or Google 🇨🇦', 'info');
+                    }
+                }
+                if (this.yandexTraffic && this._yaRegions && (!this._yaPos || this.calculateDistance(this._yaPos, this.currentPos) > 3)) {
+                    this._yaPos = this.currentPos;
+                    this.applyYandexLevel();
+                }
                 
                 // Update speed
                 if (speed !== null && speed >= 0) {
@@ -2384,8 +2926,8 @@
                     this.userMarker = L.marker(this.currentPos, {
                         icon: L.divIcon({
                             html: `<div class="user-cursor car-${this.carStyle}">${this.teslaCarHtml()}</div>`,
-                            iconSize: [78, 78],
-                            iconAnchor: [39, 42],
+                            iconSize: [56, 80],
+                            iconAnchor: [28, 52],
                             className: 'user-cursor-marker'
                         }),
                         zIndexOffset: 1000,
@@ -2508,6 +3050,22 @@
                         document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
                         btn.classList.add('active');
                         this.searchMode = btn.dataset.mode;
+                        if (btn.dataset.mode === 'google') {
+                            this._inCanada = true;
+                            this.ensureGoogleKey();
+                            this.applyMapQuality(this.mapQuality, true);
+                            this.syncTrafficButtons();
+                            if (this.yandexTraffic) this.refreshYandexTraffic(true);
+                            this.notify('🇨🇦 Google mode (Canada streets)', 'success');
+                        } else if (btn.dataset.mode === 'yandex') {
+                            this._inCanada = false;
+                            this.applyMapQuality(this.mapQuality, true);
+                            this.syncTrafficButtons();
+                            if (this.yandexTraffic) this.refreshYandexTraffic(true);
+                        } else {
+                            this.applyMapQuality(this.mapQuality, true);
+                            this.syncTrafficButtons();
+                        }
                     };
                 });
                 
@@ -2525,12 +3083,7 @@
                 });
                 
                 document.querySelectorAll('.traffic-btn').forEach(btn => {
-                    btn.onclick = () => {
-                        document.querySelectorAll('.traffic-btn').forEach(b => b.classList.remove('active'));
-                        btn.classList.add('active');
-                        this.trafficMultiplier = parseFloat(btn.dataset.multiplier);
-                        if (this.baseDuration > 0) this.updateDurationDisplay();
-                    };
+                    btn.onclick = () => this.setYandexTraffic(btn.dataset.traffic === 'yandex');
                 });
                 
                 document.getElementById('goBtn').onclick = () => this.calculateRoute();
@@ -2585,6 +3138,15 @@
                 document.getElementById('simResetBtn').onclick = () => this.resetSim();
                 document.getElementById('simDemoBtn').onclick = () => this.loadDemoRoute();
                 document.getElementById('simDeviateBtn').onclick = () => this.deviateOffRoute();
+                document.getElementById('simUseGpsBtn').onclick = () => this.fillSimFromGps();
+                document.getElementById('simUseMapBtn').onclick = () => this.fillSimFromMap();
+                document.getElementById('simBuildRouteBtn').onclick = () => this.loadExactSimRoute(false);
+                document.getElementById('simBuildPlayBtn').onclick = () => this.loadExactSimRoute(true);
+                ['simFromInput', 'simToInput'].forEach((id) => {
+                    const el = document.getElementById(id);
+                    if (el) el.onkeypress = (e) => { if (e.key === 'Enter') this.loadExactSimRoute(true); };
+                });
+                this.restoreSimRouteFields();
                 document.querySelectorAll('.sim-speed-btn').forEach(btn => {
                     btn.onclick = () => {
                         document.querySelectorAll('.sim-speed-btn').forEach(b => b.classList.remove('active'));
@@ -2636,7 +3198,7 @@
                 ['angle', 'zoom'].forEach((key) => {
                     if (cam[key] == null || Number.isNaN(Number(cam[key]))) return;
                     let val = cam[key];
-                    if (key === 'zoom') val = Math.round(Math.min(18, Math.max(15, Number(val))));
+                    if (key === 'zoom') val = Math.round(Math.min(21, Math.max(15, Number(val))));
                     document.querySelectorAll(`[data-cam="${key}"]`).forEach((el) => {
                         el.value = val;
                     });
@@ -2653,8 +3215,10 @@
 
             applyCamera() {
                 const cam = this.currentCamera();
-                this.driveZoom = Math.round(Math.min(18, Math.max(15, cam.zoom)));
+                this.driveZoom = Math.round(Math.min(21, Math.max(15, cam.zoom)));
                 const extra = Math.max(0, cam.zoom - 18);
+                if (this.map && this.map.setMaxZoom) this.map.setMaxZoom(21);
+                if (this.glMap && this.glMap.setMaxZoom) this.glMap.setMaxZoom(21);
                 const scale = 1.15 + extra * 0.28;
 
                 const camEl = this.camEl();
@@ -2890,8 +3454,14 @@
             async geocodeAddress(address) {
                 try {
                     await new Promise(resolve => setTimeout(resolve, 300));
-                    
-                    if (this.searchMode === 'yandex') {
+                    const inCa = this.useCanadaGoogle() || (this.currentPos && this.isInCanada(this.currentPos[0], this.currentPos[1]));
+                    if (inCa || this.searchMode === 'google') {
+                        const g = await this.geocodeWithGoogle(address);
+                        if (g) return g;
+                        return this.geocodeWithOSM(address);
+                    }
+                    const outsideYa = this.currentPos && !this.inYandexTrafficCoverage(this.currentPos[0], this.currentPos[1]);
+                    if (this.searchMode === 'yandex' && !outsideYa) {
                         const url = `https://geocode-maps.yandex.ru/1.x/?apikey=&geocode=${encodeURIComponent(address)}&format=json&lang=en_US`;
                         const res = await fetch(url);
                         if (!res.ok) return this.geocodeWithOSM(address);
@@ -2900,17 +3470,53 @@
                         if (!geoObj) return this.geocodeWithOSM(address);
                         const coords = geoObj.Point.pos.split(' ');
                         return [parseFloat(coords[1]), parseFloat(coords[0])];
-                    } else {
-                        return this.geocodeWithOSM(address);
                     }
+                    return this.geocodeWithOSM(address);
                 } catch {
                     return this.geocodeWithOSM(address);
+                }
+            }
+
+            async geocodeWithGoogle(address) {
+                const key = this.ensureGoogleKey();
+                if (!key) return null;
+                try {
+                    const params = new URLSearchParams({
+                        address: address,
+                        key: key,
+                        region: 'ca',
+                        language: 'en'
+                    });
+                    if (this.currentPos) {
+                        params.set('location', `${this.currentPos[0]},${this.currentPos[1]}`);
+                    }
+                    const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?${params.toString()}`);
+                    if (!res.ok) return null;
+                    const data = await res.json();
+                    const hit = data && data.results && data.results[0];
+                    if (!hit || !hit.geometry || !hit.geometry.location) return null;
+                    return [hit.geometry.location.lat, hit.geometry.location.lng];
+                } catch (_) {
+                    return null;
                 }
             }
             
             async geocodeWithOSM(address) {
                 try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&countrycodes=am`, {
+                    const params = new URLSearchParams({
+                        format: 'json',
+                        q: address,
+                        limit: '1'
+                    });
+                    // Bias toward current map/GPS area (works in Canada, Armenia, etc.).
+                    if (this.currentPos) {
+                        const lat = this.currentPos[0];
+                        const lon = this.currentPos[1];
+                        const d = 2.5;
+                        params.set('viewbox', `${lon - d},${lat + d},${lon + d},${lat - d}`);
+                        params.set('bounded', '0');
+                    }
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
                         headers: { 'User-Agent': 'TeslaNavigator/1.0' }
                     });
                     if (!res.ok) return null;
@@ -2919,6 +3525,34 @@
                 } catch {
                     return null;
                 }
+            }
+
+            inYandexTrafficCoverage(lat, lon) {
+                return !!this.yandexRegionId(lat, lon);
+            }
+
+            preferLocalSearchMode() {
+                if (!this.currentPos) return;
+                const ca = this.isInCanada(this.currentPos[0], this.currentPos[1]);
+                this._inCanada = ca;
+                if (ca) {
+                    this.searchMode = 'google';
+                    document.querySelectorAll('.mode-btn').forEach((b) => {
+                        b.classList.toggle('active', b.dataset.mode === 'google');
+                    });
+                    this.syncTrafficButtons();
+                    this.applyMapQuality(this.mapQuality, true);
+                    if (this.yandexTraffic) this.refreshYandexTraffic(true);
+                    return;
+                }
+                const covered = this.inYandexTrafficCoverage(this.currentPos[0], this.currentPos[1]);
+                if (!covered && this.searchMode === 'yandex') {
+                    this.searchMode = 'osm';
+                    document.querySelectorAll('.mode-btn').forEach((b) => {
+                        b.classList.toggle('active', b.dataset.mode === 'osm');
+                    });
+                }
+                this.syncTrafficButtons();
             }
             
             createRoute(start, end, options = {}) {
@@ -2952,8 +3586,10 @@
                 }).addTo(this.map);
                 
                 return new Promise((resolve) => {
+                    const vias = Array.isArray(options.vias) ? options.vias.filter(Boolean) : [];
+                    const waypoints = [L.latLng(start), ...vias.map((v) => L.latLng(v)), L.latLng(end)];
                     this.routing = L.Routing.control({
-                        waypoints: [L.latLng(start), L.latLng(end)],
+                        waypoints,
                         routeWhileDragging: false,
                         showAlternatives: false,
                         fitSelectedRoutes: false,
@@ -2990,6 +3626,7 @@
                         this.prefetchAheadTiles(true);
                         
                         this.baseDuration = Math.round(route.summary.totalTime / 60);
+                        this.applyYandexLevel();
                         this.updateDurationDisplay();
                         
                         if (!keepNavigating) {
@@ -3088,6 +3725,7 @@
                 this.compassMode = false;
                 document.getElementById('compassBtn').classList.remove('active');
                 this.setDrive3D(false);
+                this.clearTrafficCars();
                 this.resetToNorth();
                 
                 if (this.remainingLine && this.routeCoords.length) {
@@ -3226,13 +3864,213 @@
                 this.setDeveloperMode(false);
             }
 
-            teslaCarHtml() {
-                const pack = this.carCatalog('mark')[this.carStyle] || this.carCatalog('mark').halo;
+            teslaCarHtml(style, ns = 'mark', color) {
+                const id = style || this.carStyle;
+                if (['m3', 'my', 'ms', 'mx'].includes(id)) return this.carShapeSvg(id, ns, color);
+                const pack = this.carCatalog(ns)[id] || this.carCatalog(ns).my;
                 return pack.html;
+            }
+
+            carPaint(kind) {
+                if (kind === 'm3') return '#e8eaed';
+                if (kind === 'my') return '#3e6ae1';
+                if (kind === 'ms') return '#1c1c1e';
+                if (kind === 'mx') return '#c8ccd0';
+                return '#d0d3d6';
+            }
+
+            carShapeSvg(kind, ns, paint) {
+                const body = paint || this.carPaint(kind);
+                const glass = '#101820';
+                const light = '#ff2f1f';
+                const dark = '#090a0c';
+                const trim = kind === 'ms' ? '#e4e6ea' : '#1f2226';
+                const shade = this.shadeColor(body, -34);
+                const mid = this.shadeColor(body, -12);
+                const highlight = this.shadeColor(body, 28);
+                const uid = (ns || 'c') + '-' + kind;
+                let roof = 'M24 18 C27 8 33 3 40 3 C47 3 53 8 56 18 L60 54 C60 66 52 76 40 76 C28 76 20 66 20 54 Z';
+                let cabin = 'M28 18 C31 10 35 7 40 7 C45 7 49 10 52 18 L55 42 C55 52 49 58 40 58 C31 58 25 52 25 42 Z';
+                let sideL = 'M16 22 L24 18 L20 54 L12 58 Z';
+                let sideR = 'M56 18 L64 22 L68 58 L60 54 Z';
+                let front = 'M22 14 C28 4 34 1 40 1 C46 1 52 4 58 14 L56 18 L24 18 Z';
+                let bumper = 'M22 62 H58 L54 82 H26 Z';
+                if (kind === 'my') {
+                    roof = 'M22 16 C26 6 32 1 40 1 C48 1 54 6 58 16 L63 52 C63 68 54 80 40 80 C26 80 17 68 17 52 Z';
+                    cabin = 'M27 16 C31 8 35 5 40 5 C45 5 49 8 53 16 L57 44 C57 56 50 64 40 64 C30 64 23 56 23 44 Z';
+                    sideL = 'M14 20 L22 16 L17 52 L9 56 Z';
+                    sideR = 'M58 16 L66 20 L71 56 L63 52 Z';
+                    front = 'M20 12 C27 2 33 0 40 0 C47 0 53 2 60 12 L58 16 L22 16 Z';
+                    bumper = 'M20 60 H60 L55 86 H25 Z';
+                } else if (kind === 'ms') {
+                    roof = 'M25 14 C29 5 34 1 40 1 C46 1 51 5 55 14 L60 56 C60 68 52 78 40 78 C28 78 20 68 20 56 Z';
+                    cabin = 'M30 16 C33 9 36 6 40 6 C44 6 47 9 50 16 L54 40 C54 48 48 54 40 54 C32 54 26 48 26 40 Z';
+                    sideL = 'M16 18 L25 14 L20 56 L12 60 Z';
+                    sideR = 'M55 14 L64 18 L68 60 L60 56 Z';
+                    front = 'M23 11 C29 2 34 0 40 0 C46 0 51 2 57 11 L55 14 L25 14 Z';
+                    bumper = 'M22 64 H58 L54 84 H26 Z';
+                } else if (kind === 'mx') {
+                    roof = 'M20 14 C25 4 32 0 40 0 C48 0 55 4 60 14 L66 50 C66 68 55 84 40 84 C25 84 14 68 14 50 Z';
+                    cabin = 'M26 14 C30 6 35 3 40 3 C45 3 50 6 54 14 L59 42 C59 54 51 64 40 64 C29 64 21 54 21 42 Z';
+                    sideL = 'M10 18 L20 14 L14 50 L5 54 Z';
+                    sideR = 'M60 14 L70 18 L75 54 L66 50 Z';
+                    front = 'M18 10 C26 1 33 0 40 0 C47 0 54 1 62 10 L60 14 L20 14 Z';
+                    bumper = 'M18 58 H62 L56 88 H24 Z';
+                }
+                return `<svg viewBox="0 0 80 96" xmlns="http://www.w3.org/2000/svg" aria-label="${kind}">
+                    <defs>
+                      <linearGradient id="bg-${uid}" x1="0" y1="0" x2="0.35" y2="1">
+                        <stop offset="0%" stop-color="${highlight}"/>
+                        <stop offset="42%" stop-color="${body}"/>
+                        <stop offset="100%" stop-color="${shade}"/>
+                      </linearGradient>
+                      <linearGradient id="sd-${uid}" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="${mid}"/>
+                        <stop offset="100%" stop-color="${dark}"/>
+                      </linearGradient>
+                      <linearGradient id="gl-${uid}" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#5b758c"/>
+                        <stop offset="55%" stop-color="#1a2a36"/>
+                        <stop offset="100%" stop-color="${glass}"/>
+                      </linearGradient>
+                      <linearGradient id="fr-${uid}" x1="0" y1="1" x2="0" y2="0">
+                        <stop offset="0%" stop-color="${body}"/>
+                        <stop offset="100%" stop-color="${highlight}"/>
+                      </linearGradient>
+                    </defs>
+                    <ellipse cx="40" cy="90" rx="24" ry="5.5" fill="rgba(0,0,0,0.38)"/>
+                    <path d="${sideL}" fill="url(#sd-${uid})"/>
+                    <path d="${sideR}" fill="url(#sd-${uid})" opacity="0.88"/>
+                    <path d="${front}" fill="url(#fr-${uid})" stroke="${trim}" stroke-width="0.8"/>
+                    <path d="${roof}" fill="url(#bg-${uid})" stroke="${trim}" stroke-width="1.4" stroke-linejoin="round"/>
+                    <path d="${cabin}" fill="url(#gl-${uid})" opacity="0.97"/>
+                    <path d="M31 14 L40 8 L49 14" fill="none" stroke="rgba(255,255,255,0.42)" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="${bumper}" fill="${dark}"/>
+                    <rect x="24" y="66" width="32" height="5.5" rx="1.6" fill="${light}"/>
+                    <rect x="26" y="67.4" width="12" height="2.6" rx="1" fill="#ffd7c8"/>
+                    <rect x="42" y="67.4" width="12" height="2.6" rx="1" fill="#ffd7c8"/>
+                    <rect x="12" y="48" width="9" height="16" rx="2.5" fill="${dark}"/>
+                    <rect x="59" y="48" width="9" height="16" rx="2.5" fill="${dark}"/>
+                    <rect x="34" y="4" width="12" height="4.5" rx="1.5" fill="#f8fafc" opacity="0.95"/>
+                    <ellipse cx="40" cy="30" rx="9" ry="4" fill="rgba(255,255,255,0.16)"/>
+                    <path d="M26 20 L28 52" fill="none" stroke="rgba(0,0,0,0.18)" stroke-width="2"/>
+                    <path d="M54 20 L52 52" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
+                </svg>`;
+            }
+
+            shadeColor(hex, amount) {
+                const h = String(hex || '#888888').replace('#', '');
+                if (h.length !== 6) return hex;
+                const n = parseInt(h, 16);
+                const clamp = (v) => Math.max(0, Math.min(255, v + amount));
+                const r = clamp((n >> 16) & 255);
+                const g = clamp((n >> 8) & 255);
+                const b = clamp(n & 255);
+                return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+            }
+
+            trafficCount() {
+                const lvl = this._yaLevel == null || isNaN(this._yaLevel) ? 2 : this._yaLevel;
+                const len = this.routeLengthMeters();
+                const byDensity = Math.max(6, Math.min(20, 6 + Math.round(lvl * 1.4)));
+                if (len < 80) return Math.min(byDensity, 6);
+                return Math.min(byDensity, Math.max(6, Math.floor(len / 32)));
+            }
+
+            routeLengthMeters() {
+                const coords = this.routeCoords;
+                if (!coords || coords.length < 2) return 0;
+                let m = 0;
+                for (let i = 0; i < coords.length - 1; i++) {
+                    m += this.calculateDistance(coords[i], coords[i + 1]) * 1000;
+                }
+                return m;
+            }
+
+            clearTrafficCars() {
+                (this.trafficCars || []).forEach((c) => {
+                    if (c && c.marker) {
+                        try { c.marker.remove(); } catch (_) {}
+                    }
+                });
+                this.trafficCars = [];
+            }
+
+            seedTrafficCars(force = false) {
+                if (!this.glMap || !this.isNavigating || !this.routeCoords.length || !this.currentPos) {
+                    this.clearTrafficCars();
+                    return;
+                }
+                const want = this.yandexTraffic ? this.trafficCount() : 6;
+                if (!force && this.trafficCars.length === want) return;
+                this.clearTrafficCars();
+                const kinds = ['m3', 'my', 'ms', 'mx'];
+                const colors = ['#f2f4f8', '#1c1c1e', '#3e6ae1', '#8e9aab', '#c0392b', '#2c3e50', '#bdc3c7', '#4a6fa5'];
+                const dense = (this._yaLevel || 0) >= 5;
+                const span = Math.max(50, this.routeLengthMeters() - 28);
+                this._routeLenM = span;
+                for (let i = 0; i < want; i++) {
+                    // Right-hand traffic: same direction = right of centerline (+), oncoming = left (−).
+                    const oncoming = i % 3 === 0;
+                    const lane = oncoming ? -3.2 : 3.0;
+                    const ahead = 18 + (i + 0.35) * (span / want);
+                    const mps = oncoming
+                        ? (dense ? 7 : 12)
+                        : Math.max(4, (this.speed || 40) / 3.6 + (dense ? -3 : (i % 3 - 1) * 2.2));
+                    const kind = kinds[i % kinds.length];
+                    const color = colors[(i * 3) % colors.length];
+                    const el = document.createElement('div');
+                    el.className = 'traffic-car';
+                    el.innerHTML = `<div class="car-3d">${this.carShapeSvg(kind, 't' + i, color)}</div>`;
+                    this.applyCarScale(el, 'traffic');
+                    const marker = new maplibregl.Marker({
+                        element: el,
+                        anchor: 'center',
+                        pitchAlignment: 'map',
+                        rotationAlignment: 'map'
+                    }).setLngLat([this.currentPos[1], this.currentPos[0]]).addTo(this.glMap);
+                    this.trafficCars.push({ ahead, lane, mps, oncoming, marker, el });
+                }
+            }
+
+            tickTrafficCars(dt) {
+                if (!this.glMap || !this.isNavigating || !this.trafficCars.length || !this.routeCoords.length) return;
+                const playerMps = Math.max(2, (this.speed || 36) / 3.6);
+                const span = this._routeLenM || Math.max(50, this.routeLengthMeters() - 28);
+                const size = this.carPixelSize('traffic');
+                const pitch = this.glMap.getPitch();
+                const tilt = Math.max(8, Math.min(28, 8 + pitch * 0.28));
+                for (let i = 0; i < this.trafficCars.length; i++) {
+                    const c = this.trafficCars[i];
+                    if (c.oncoming) c.ahead -= (c.mps + playerMps) * dt;
+                    else c.ahead += (c.mps - playerMps) * dt;
+                    if (c.ahead < 16) c.ahead = span - 10;
+                    if (c.ahead > span) c.ahead = 18;
+                    const p = this.pointAlongRoute(c.ahead);
+                    if (!p) continue;
+                    // Travel bearing along the route, then face travel direction.
+                    const look = this.pointAlongRoute(c.ahead + 6) || p;
+                    let brg = this.bearingBetween(p, look);
+                    if (c.oncoming) brg = (brg + 180) % 360;
+                    // Right-side offset relative to route forward (+90 = right).
+                    const pos = this.offsetByMeters(p, this.bearingBetween(p, look) + 90, c.lane);
+                    c.marker.setLngLat([pos[1], pos[0]]);
+                    c.marker.setRotation(brg);
+                    if (c.el) {
+                        c.el.style.width = size.w + 'px';
+                        c.el.style.height = size.h + 'px';
+                        const inner = c.el.querySelector('.car-3d');
+                        if (inner) inner.style.setProperty('--car-tilt', tilt.toFixed(1) + 'deg');
+                    }
+                }
             }
 
             carCatalog(ns = 'c') {
                 return {
+                    m3: { name: 'Model 3', html: this.carShapeSvg('m3', ns + 'm3') },
+                    my: { name: 'Model Y', html: this.carShapeSvg('my', ns + 'my') },
+                    ms: { name: 'Model S', html: this.carShapeSvg('ms', ns + 'ms') },
+                    mx: { name: 'Model X', html: this.carShapeSvg('mx', ns + 'mx') },
                     pulse: {
                         name: 'Pulse',
                         html: `<svg viewBox="0 0 78 78" xmlns="http://www.w3.org/2000/svg" aria-label="Pulse">
@@ -3299,18 +4137,22 @@
             }
 
             renderCarPicker() {
-                const wrap = document.getElementById('carPicker');
-                if (!wrap) return;
                 const catalog = this.carCatalog('pick');
-                wrap.innerHTML = Object.keys(catalog).map((id) => {
-                    const c = catalog[id];
-                    const on = id === this.carStyle ? ' active' : '';
-                    return `<button type="button" class="car-opt${on}" data-car="${id}" title="${c.name}">${c.html}<span>${c.name}</span></button>`;
-                }).join('');
-                wrap.onclick = (e) => {
-                    const btn = e.target.closest('[data-car]');
-                    if (btn) this.setCarStyle(btn.dataset.car);
+                const fill = (wrap, ids) => {
+                    if (!wrap) return;
+                    wrap.innerHTML = ids.map((id) => {
+                        const c = catalog[id];
+                        if (!c) return '';
+                        const on = id === this.carStyle ? ' active' : '';
+                        return `<button type="button" class="car-opt${on}" data-car="${id}" title="${c.name}">${c.html}<span>${c.name}</span></button>`;
+                    }).join('');
+                    wrap.onclick = (e) => {
+                        const btn = e.target.closest('[data-car]');
+                        if (btn) this.setCarStyle(btn.dataset.car);
+                    };
                 };
+                fill(document.getElementById('carMiniPicker'), ['m3', 'my', 'ms', 'mx']);
+                fill(document.getElementById('carPicker'), Object.keys(catalog));
             }
 
             setCarStyle(id) {
@@ -3337,8 +4179,8 @@
                 } else {
                     this.userMarker.setIcon(L.divIcon({
                         html: `<div class="user-cursor car-${this.carStyle}">${this.teslaCarHtml()}</div>`,
-                        iconSize: [78, 78],
-                        iconAnchor: [39, 42],
+                        iconSize: [56, 80],
+                        iconAnchor: [28, 52],
                         className: 'user-cursor-marker'
                     }));
                 }
@@ -3462,7 +4304,7 @@
                 if (!this.developerMode) return;
                 this.seedFallbackPosition();
                 if (!this.routeCoords.length) {
-                    this.notify('Set a destination (or Demo route), then Play', 'error');
+                    this.notify('Fill Exact Route (FROM/TO) or Demo, then Play', 'error');
                     return;
                 }
 
@@ -3569,8 +4411,120 @@
                 this.updatePosition(this.fakeGeoPosition(start, 0, 0));
                 document.getElementById('fromInput').value = 'Republic Square';
                 document.getElementById('toInput').value = 'Cascade';
+                const fromEl = document.getElementById('simFromInput');
+                const toEl = document.getElementById('simToInput');
+                if (fromEl) fromEl.value = '40.1776, 44.5126';
+                if (toEl) toEl.value = '40.1912, 44.5158';
+                const viaEl = document.getElementById('simViaInput');
+                if (viaEl) viaEl.value = '';
+                this.persistSimRouteFields();
                 this.notify('📍 Demo: Republic Square → Cascade', 'info');
                 await this.createRoute(start, end);
+            }
+
+            parseCoordText(text) {
+                if (!text) return null;
+                const raw = String(text).trim();
+                const m = raw.match(/^(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)$/);
+                if (!m) return null;
+                const a = parseFloat(m[1]);
+                const b = parseFloat(m[2]);
+                if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+                // lat,lng preferred; if first number looks like longitude for Canada/world, still treat as lat,lng
+                if (Math.abs(a) <= 90 && Math.abs(b) <= 180) return [a, b];
+                return null;
+            }
+
+            async resolveSimPoint(text, label) {
+                const typed = String(text || '').trim();
+                if (!typed) {
+                    this.notify(label + ' is required', 'error');
+                    return null;
+                }
+                const coords = this.parseCoordText(typed) || await this.geocodeAddress(typed);
+                if (!coords) {
+                    this.notify('Could not resolve ' + label + ': ' + typed, 'error');
+                    return null;
+                }
+                return coords;
+            }
+
+            fillSimFromGps() {
+                this.seedFallbackPosition();
+                if (!this.currentPos) {
+                    this.notify('No GPS position yet', 'error');
+                    return;
+                }
+                const el = document.getElementById('simFromInput');
+                if (el) el.value = this.currentPos[0].toFixed(6) + ', ' + this.currentPos[1].toFixed(6);
+                this.persistSimRouteFields();
+                this.notify('From = current GPS', 'success');
+            }
+
+            fillSimFromMap() {
+                if (!this.map) return;
+                const c = this.map.getCenter();
+                const el = document.getElementById('simFromInput');
+                if (el) el.value = c.lat.toFixed(6) + ', ' + c.lng.toFixed(6);
+                this.persistSimRouteFields();
+                this.notify('From = map center', 'success');
+            }
+
+            persistSimRouteFields() {
+                try {
+                    localStorage.setItem('tesla_sim_route_v1', JSON.stringify({
+                        from: (document.getElementById('simFromInput') || {}).value || '',
+                        to: (document.getElementById('simToInput') || {}).value || '',
+                        via: (document.getElementById('simViaInput') || {}).value || ''
+                    }));
+                } catch (_) {}
+            }
+
+            restoreSimRouteFields() {
+                try {
+                    const raw = localStorage.getItem('tesla_sim_route_v1');
+                    if (!raw) return;
+                    const data = JSON.parse(raw);
+                    if (data.from && document.getElementById('simFromInput')) document.getElementById('simFromInput').value = data.from;
+                    if (data.to && document.getElementById('simToInput')) document.getElementById('simToInput').value = data.to;
+                    if (data.via != null && document.getElementById('simViaInput')) document.getElementById('simViaInput').value = data.via;
+                } catch (_) {}
+            }
+
+            async loadExactSimRoute(autoPlay = false) {
+                if (!this.developerMode) return;
+                this.pauseSim();
+                const fromText = (document.getElementById('simFromInput') || {}).value || '';
+                const toText = (document.getElementById('simToInput') || {}).value || '';
+                const viaText = (document.getElementById('simViaInput') || {}).value || '';
+                this.persistSimRouteFields();
+
+                const start = await this.resolveSimPoint(fromText, 'FROM');
+                if (!start) return;
+                const end = await this.resolveSimPoint(toText, 'TO');
+                if (!end) return;
+
+                const viaLines = String(viaText).split(/\n|;/).map((s) => s.trim()).filter(Boolean);
+                const vias = [];
+                for (let i = 0; i < viaLines.length; i++) {
+                    const p = await this.resolveSimPoint(viaLines[i], 'VIA ' + (i + 1));
+                    if (!p) return;
+                    vias.push(p);
+                }
+
+                document.getElementById('fromInput').value = fromText.trim();
+                document.getElementById('toInput').value = toText.trim();
+                this.lastPos = null;
+                this.updatePosition(this.fakeGeoPosition(start, 0, 0));
+                this.notify('📍 Building exact sim route…', 'info');
+                const route = await this.createRoute(start, end, { vias });
+                if (!route) {
+                    this.notify('Route failed', 'error');
+                    return;
+                }
+                this.resetSim();
+                if (autoPlay) await this.startSim();
+                else this.notify('✅ Exact route ready — tap Play', 'success');
             }
 
             notify(msg, type) {
