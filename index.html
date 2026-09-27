@@ -108,12 +108,12 @@
             top: 75%;
             width: 72px;
             height: 130px;
-            transform: translate(-50%, -58%) perspective(520px) rotateX(var(--car-tilt, 22deg));
-            transform-origin: 50% 78%;
+            transform: translate(-50%, -50%);
+            transform-origin: 50% 50%;
             z-index: 6;
             pointer-events: none;
-            filter: drop-shadow(0 14px 18px rgba(0,0,0,0.55));
-            will-change: width, height, transform;
+            filter: drop-shadow(0 10px 12px rgba(0,0,0,0.5));
+            will-change: width, height, left, top, transform;
         }
         .hud-car svg { width: 100%; height: 100%; display: block; overflow: visible; }
         .map-stage.drive-gl .hud-car { display: block; }
@@ -175,6 +175,80 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
+            transition: bottom 0.2s ease;
+        }
+        body.driving .compass-controls {
+            bottom: 78px;
+        }
+        body.driving .sim-panel {
+            bottom: 90px;
+        }
+        body.driving .sim-panel.minimized {
+            bottom: 78px;
+        }
+
+        .drive-progress {
+            display: none;
+            position: fixed;
+            left: 20%;
+            right: 20%;
+            width: auto;
+            bottom: 12px;
+            z-index: 1100;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: rgba(12, 12, 14, 0.88);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 14px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+        }
+        body.driving .drive-progress {
+            display: flex;
+        }
+        .drive-progress-km {
+            flex: 0 0 auto;
+            min-width: 64px;
+            font-size: 15px;
+            font-weight: 800;
+            color: #f2f4f8;
+            letter-spacing: 0.2px;
+            font-variant-numeric: tabular-nums;
+        }
+        .drive-progress-km small {
+            display: block;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--tesla-text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .drive-progress-track {
+            flex: 1;
+            height: 12px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.12);
+            overflow: hidden;
+            position: relative;
+        }
+        .drive-progress-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #1b8f3a 0%, #2ecc56 55%, #6dff8f 100%);
+            box-shadow: 0 0 12px rgba(46, 204, 86, 0.45);
+            transition: none;
+            will-change: width;
+        }
+        .drive-progress-pct {
+            flex: 0 0 auto;
+            min-width: 48px;
+            text-align: right;
+            font-size: 16px;
+            font-weight: 800;
+            color: #2ecc56;
+            font-variant-numeric: tabular-nums;
         }
         
         .compass-btn {
@@ -224,6 +298,7 @@
             z-index: 1000;
             transition: opacity 0.3s ease, transform 0.3s ease;
             max-width: 400px;
+            overflow: visible;
         }
         .control-panel.hidden-ui {
             opacity: 0;
@@ -362,6 +437,7 @@
             border: 1px solid var(--tesla-light-gray); 
             margin-bottom: 6px;
             backdrop-filter: blur(10px);
+            overflow: visible;
         }
         
         .search-mode {
@@ -396,6 +472,60 @@
             align-items: center;
             gap: 6px;
             margin-bottom: 6px;
+            position: relative;
+        }
+        .input-row-wrap {
+            position: relative;
+            margin-bottom: 6px;
+        }
+        .input-row-wrap .input-row { margin-bottom: 0; }
+        .suggest-box {
+            display: none;
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: calc(100% + 4px);
+            z-index: 1200;
+            max-height: 220px;
+            overflow-y: auto;
+            background: rgba(22, 22, 24, 0.98);
+            border: 1px solid var(--tesla-light-gray);
+            border-radius: 10px;
+            box-shadow: 0 10px 28px rgba(0,0,0,0.45);
+        }
+        .suggest-box.open { display: block; }
+        .suggest-item {
+            width: 100%;
+            text-align: left;
+            border: none;
+            background: transparent;
+            color: var(--tesla-text);
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .suggest-item:last-child { border-bottom: none; }
+        .suggest-item:hover, .suggest-item.active {
+            background: rgba(62, 106, 225, 0.22);
+        }
+        .suggest-item .s-title {
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+        .suggest-item .s-sub {
+            font-size: 11px;
+            color: var(--tesla-text-dim);
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .suggest-item .s-meta {
+            font-size: 10px;
+            color: #7aa2ff;
+            margin-top: 2px;
+            font-weight: 600;
         }
         .input-row:last-child {
             margin-bottom: 0;
@@ -438,6 +568,7 @@
         .traffic-buttons {
             display: flex;
             gap: 6px;
+            flex-wrap: wrap;
         }
         
         .traffic-btn, .quality-btn, .style-btn {
@@ -450,6 +581,18 @@
             font-weight: 700;
             cursor: pointer;
             transition: all 0.2s;
+        }
+        .style-btn {
+            padding: 8px 10px;
+            font-size: 11px;
+        }
+        .style-hint {
+            width: 100%;
+            font-size: 11px;
+            color: var(--tesla-text-dim);
+            opacity: 0.85;
+            margin-top: 2px;
+            line-height: 1.35;
         }
         
         .traffic-btn.active {
@@ -1024,6 +1167,17 @@
         </div>
         <button id="stopNavBtn" class="stop-nav-btn">⏹️ STOP</button>
     </div>
+
+    <div id="driveProgress" class="drive-progress" aria-label="Route progress">
+        <div class="drive-progress-km">
+            <span id="driveProgressKm">--</span>
+            <small>left</small>
+        </div>
+        <div class="drive-progress-track" title="Passed / remaining">
+            <div id="driveProgressFill" class="drive-progress-fill"></div>
+        </div>
+        <div class="drive-progress-pct" id="driveProgressPct">0%</div>
+    </div>
     
     <div class="control-panel" id="controlPanel">
         <button id="startNavBtn" class="btn-start hidden">🚀 START NAVIGATION</button>
@@ -1035,31 +1189,42 @@
                 <button class="mode-btn" data-mode="google">Google 🇨🇦</button>
             </div>
             
-            <div class="input-row">
-                <span class="input-icon">🔵</span>
-                <input type="text" id="fromInput" placeholder="From: Your location..." class="search-input">
+            <div class="input-row-wrap" data-suggest-for="from">
+                <div class="input-row">
+                    <span class="input-icon">🔵</span>
+                    <input type="text" id="fromInput" placeholder="From: Your location..." class="search-input" autocomplete="off">
+                </div>
+                <div class="suggest-box" id="fromSuggest"></div>
             </div>
-            <div class="input-row">
-                <span class="input-icon">🔴</span>
-                <input type="text" id="toInput" placeholder="To: Destination..." class="search-input">
+            <div class="input-row-wrap" data-suggest-for="to">
+                <div class="input-row">
+                    <span class="input-icon">🔴</span>
+                    <input type="text" id="toInput" placeholder="To: Destination..." class="search-input" autocomplete="off">
+                </div>
+                <div class="suggest-box" id="toSuggest"></div>
             </div>
             
             <div class="traffic-toggle">
-                <span class="traffic-label">🎨 Style:</span>
-                <div class="traffic-buttons">
-                    <button class="style-btn" data-style="osm" title="Full OpenStreetMap detail">OSM</button>
-                    <button class="style-btn active" data-style="clean" title="Clean roads, fewer labels">Clean</button>
-                    <button class="style-btn" data-style="simple" title="Light map, minimal clutter">Simple</button>
-                    <button class="style-btn" data-style="night" title="Dark Tesla-style map">Night</button>
+                <span class="traffic-label">🎨 Map:</span>
+                <div class="traffic-buttons" id="mapStyleBtns">
+                    <button class="style-btn active" data-style="voyager" title="Carto Voyager · fast, reliable">Voyager</button>
+                    <button class="style-btn" data-style="light" title="Carto Light · fastest, least data">Light</button>
+                    <button class="style-btn" data-style="osm" title="OpenStreetMap · classic, reliable">OSM</button>
+                    <button class="style-btn" data-style="google" title="Google streets · most realistic">Google</button>
+                    <button class="style-btn" data-style="vector" title="OpenFreeMap vector · sharp but slower">Vector</button>
+                    <button class="style-btn" data-style="sat" title="Satellite + labels · no 3D">Sat</button>
+                    <button class="style-btn" data-style="night" title="Dark night map · fast">Night</button>
+                    <button class="style-btn" data-style="esri" title="Esri streets · may show missing data">Esri</button>
                 </div>
+                <div class="style-hint" id="mapStyleHint">Voyager — colored streets, fast load (good default for car)</div>
             </div>
             
             <div class="traffic-toggle">
                 <span class="traffic-label">🗺️ Load:</span>
                 <div class="traffic-buttons">
-                    <button class="quality-btn" data-quality="low" title="Blurrier map, least data">Low</button>
-                    <button class="quality-btn" data-quality="med" title="Balanced tiles and data">Med</button>
-                    <button class="quality-btn active" data-quality="high" title="Load extra tiles, fewer gaps">High</button>
+                    <button class="quality-btn" data-quality="low" title="Least data">Low</button>
+                    <button class="quality-btn active" data-quality="med" title="Fast + clear · best for driving">Med</button>
+                    <button class="quality-btn" data-quality="high" title="Extra tiles ahead">High</button>
                 </div>
             </div>
             
@@ -1087,6 +1252,15 @@
             <div class="traffic-toggle">
                 <span class="traffic-label">🚗 Car:</span>
                 <div class="traffic-buttons car-mini" id="carMiniPicker"></div>
+            </div>
+            <div class="traffic-toggle">
+                <span class="traffic-label">📐 Size:</span>
+                <div class="traffic-buttons" id="carSizeBtns">
+                    <button type="button" class="shape-btn" data-car-size="s" title="Small">S</button>
+                    <button type="button" class="shape-btn" data-car-size="m" title="Medium">M</button>
+                    <button type="button" class="shape-btn active" data-car-size="l" title="Large">L</button>
+                    <button type="button" class="shape-btn" data-car-size="xl" title="Extra large">XL</button>
+                </div>
             </div>
 
             <div class="traffic-toggle">
@@ -1276,10 +1450,9 @@
                 } catch (_) {}
                 this.baseDuration = 0;
                 this.searchMode = 'yandex';
-                this.googleApiKey = '';
-                try {
-                    this.googleApiKey = localStorage.getItem('tesla_google_key') || '';
-                } catch (_) {}
+                this._suggest = { from: [], to: [] };
+                this._pickedSearch = { from: null, to: null };
+                this._suggestTimers = {};
                 this._inCanada = false;
                 this.instructions = [];
                 this.currentInstruction = 0;
@@ -1299,18 +1472,23 @@
                 this.glCar = null;
                 this.glDest = null;
                 this.carStyle = 'my';
+                this.carSize = 'l';
                 this.trafficCars = [];
                 try {
                     const savedCar = localStorage.getItem('tesla_car_style');
                     if (savedCar && ['m3', 'my', 'ms', 'mx', 'pulse', 'cyber', 'ember', 'halo'].includes(savedCar)) this.carStyle = savedCar;
+                    const savedSize = localStorage.getItem('tesla_car_size');
+                    if (savedSize && ['s', 'm', 'l', 'xl'].includes(savedSize)) this.carSize = savedSize;
                 } catch (_) {}
-                this.mapQuality = 'high';
-                this.mapStyle = 'clean';
+                this.mapQuality = 'med';
+                this.mapStyle = 'voyager';
                 try {
                     const savedQ = localStorage.getItem('tesla_map_quality');
                     if (savedQ === 'low' || savedQ === 'med' || savedQ === 'high') this.mapQuality = savedQ;
                     const savedS = localStorage.getItem('tesla_map_style');
-                    if (savedS === 'osm' || savedS === 'clean' || savedS === 'simple' || savedS === 'night') this.mapStyle = savedS;
+                    const legacy = { clean: 'esri', simple: 'voyager' };
+                    const mapped = legacy[savedS] || savedS;
+                    if (this.isMapStyleId(mapped)) this.mapStyle = mapped;
                 } catch (_) {}
                 this._lastGoodBearing = null;
                 this._headingAt = 0;
@@ -1381,24 +1559,41 @@
                 this.notify('Ready! 🚗', 'success');
             }
             
+            isMapStyleId(id) {
+                return ['voyager', 'light', 'osm', 'google', 'vector', 'sat', 'night', 'esri'].includes(id);
+            }
+
+            mapStyleMeta(id) {
+                const all = {
+                    voyager: { label: 'Voyager', hint: 'Carto Voyager — colored streets, fast (best everyday car default)' },
+                    light: { label: 'Light', hint: 'Carto Light — pale/minimal, fastest, lowest data' },
+                    osm: { label: 'OSM', hint: 'OpenStreetMap — classic detail, reliable, medium speed' },
+                    google: { label: 'Google', hint: 'Google roadmap — most realistic streets, medium data' },
+                    vector: { label: 'Vector', hint: 'OpenFreeMap with 3D buildings — sharp, heavier on LTE' },
+                    sat: { label: 'Sat', hint: 'Satellite — full road & building labels' },
+                    night: { label: 'Night', hint: 'Dark map — fast, good at night' },
+                    esri: { label: 'Esri', hint: 'Esri streets — sometimes shows “data not available”' }
+                };
+                return all[id] || all.voyager;
+            }
+
             applyMapQuality(level, silent = false) {
                 const presets = {
-                    low:  { keepBuffer: 4,  maxNativeZoom: 16, updateWhenIdle: true,  updateInterval: 400, size: 140 },
-                    med:  { keepBuffer: 6,  maxNativeZoom: 18, updateWhenIdle: false, updateInterval: 200, size: 170 },
-                    high: { keepBuffer: 8,  maxNativeZoom: 19, updateWhenIdle: false, updateInterval: 120, size: 200 }
+                    low:  { keepBuffer: 2,  maxNativeZoom: 16, updateWhenIdle: true,  updateInterval: 450, size: 130 },
+                    med:  { keepBuffer: 3,  maxNativeZoom: 18, updateWhenIdle: true,  updateInterval: 220, size: 150 },
+                    high: { keepBuffer: 5,  maxNativeZoom: 19, updateWhenIdle: false, updateInterval: 140, size: 175 }
                 };
-                const q = presets[level] || presets.high;
-                this.mapQuality = presets[level] ? level : 'high';
+                const q = presets[level] || presets.med;
+                this.mapQuality = presets[level] ? level : 'med';
+                if (!this.isMapStyleId(this.mapStyle)) this.mapStyle = 'voyager';
                 const style = this.tileConfig();
-                this.mapStyle = (this.mapStyle === 'osm' || this.mapStyle === 'clean' || this.mapStyle === 'simple' || this.mapStyle === 'night')
-                    ? this.mapStyle : 'clean';
 
                 if (this.baseTileLayer) {
                     this.map.removeLayer(this.baseTileLayer);
                 }
                 this.baseTileLayer = L.tileLayer(style.url, {
                     attribution: style.attrib,
-                    subdomains: style.subdomains,
+                    ...(style.subdomains ? { subdomains: style.subdomains } : {}),
                     maxZoom: 21,
                     maxNativeZoom: Math.min(q.maxNativeZoom, style.maxNative),
                     keepBuffer: q.keepBuffer,
@@ -1411,10 +1606,10 @@
                 this._tileFail = 0;
                 this.baseTileLayer.on('tileerror', () => {
                     this._tileFail = (this._tileFail || 0) + 1;
-                    if (this._tileFail >= 8 && this.mapStyle !== 'osm' && !this.useCanadaGoogle()) {
-                        this.mapStyle = 'osm';
+                    if (this._tileFail >= 10 && this.mapStyle !== 'voyager') {
+                        this.mapStyle = 'voyager';
                         this.applyMapQuality(this.mapQuality, true);
-                        this.notify('Map tiles switched to OSM', 'info');
+                        this.notify('Map tiles switched to Voyager', 'info');
                     }
                 });
 
@@ -1426,17 +1621,17 @@
                 document.querySelectorAll('.style-btn').forEach((btn) => {
                     btn.classList.toggle('active', btn.dataset.style === this.mapStyle);
                 });
+                const hint = document.getElementById('mapStyleHint');
+                if (hint) hint.textContent = this.mapStyleMeta(this.mapStyle).hint;
                 try {
                     localStorage.setItem('tesla_map_quality', this.mapQuality);
                     localStorage.setItem('tesla_map_style', this.mapStyle);
                 } catch (_) {}
                 if (!silent) {
-                    const qLabel = this.mapQuality === 'low' ? 'Low data' : this.mapQuality === 'high' ? 'High detail' : 'Balanced';
-                    let sLabel = this.mapStyle === 'osm' ? 'OSM' : this.mapStyle === 'simple' ? 'Simple' : this.mapStyle === 'night' ? 'Night' : 'Clean';
-                    if (this.useCanadaGoogle() && this.mapStyle !== 'night') sLabel = 'Google CA';
-                    this.notify('🗺️ ' + sLabel + ' · ' + qLabel, 'info');
+                    const qLabel = this.mapQuality === 'low' ? 'Low' : this.mapQuality === 'high' ? 'High' : 'Med';
+                    this.notify('🗺️ ' + this.mapStyleMeta(this.mapStyle).label + ' · ' + qLabel, 'info');
                 }
-                this.applyGlStyle();
+                this.applyGlStyle(true);
                 if (this.isNavigating) {
                     setTimeout(() => {
                         this.refreshTiles();
@@ -1458,52 +1653,66 @@
 
             qualityPreset() {
                 const presets = {
-                    low:  { keepBuffer: 4,  maxNativeZoom: 16, updateWhenIdle: true,  updateInterval: 400, size: 140 },
-                    med:  { keepBuffer: 6,  maxNativeZoom: 18, updateWhenIdle: false, updateInterval: 200, size: 170 },
-                    high:  { keepBuffer: 8,  maxNativeZoom: 18, updateWhenIdle: false, updateInterval: 120, size: 200 }
+                    low:  { keepBuffer: 2,  maxNativeZoom: 16, updateWhenIdle: true,  updateInterval: 450, size: 130 },
+                    med:  { keepBuffer: 3,  maxNativeZoom: 18, updateWhenIdle: true,  updateInterval: 220, size: 150 },
+                    high: { keepBuffer: 5,  maxNativeZoom: 19, updateWhenIdle: false, updateInterval: 140, size: 175 }
                 };
-                return presets[this.mapQuality] || presets.high;
+                return presets[this.mapQuality] || presets.med;
             }
 
             tileConfig() {
                 const styles = {
+                    voyager: {
+                        url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+                        maxNative: 20,
+                        subdomains: 'abcd',
+                        attrib: '© OpenStreetMap © CARTO'
+                    },
+                    light: {
+                        url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                        maxNative: 20,
+                        subdomains: 'abcd',
+                        attrib: '© OpenStreetMap © CARTO'
+                    },
                     osm: {
                         url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
                         maxNative: 19,
                         subdomains: 'abc',
                         attrib: '© OpenStreetMap'
                     },
-                    clean: {
+                    google: {
+                        url: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=en',
+                        maxNative: 21,
+                        subdomains: '0123',
+                        attrib: '© Google'
+                    },
+                    // Leaflet planning view uses Voyager; drive GL switches to OpenFreeMap vector.
+                    vector: {
                         url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
                         maxNative: 20,
                         subdomains: 'abcd',
-                        attrib: '© OpenStreetMap © CARTO'
+                        attrib: '© OpenStreetMap © OpenFreeMap'
                     },
-                    simple: {
-                        url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                        maxNative: 20,
-                        subdomains: 'abcd',
-                        attrib: '© OpenStreetMap © CARTO'
+                    sat: {
+                        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                        maxNative: 19,
+                        subdomains: '',
+                        attrib: '© Esri'
                     },
                     night: {
                         url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
                         maxNative: 20,
                         subdomains: 'abcd',
                         attrib: '© OpenStreetMap © CARTO'
+                    },
+                    esri: {
+                        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+                        maxNative: 19,
+                        subdomains: '',
+                        attrib: '© Esri'
                     }
                 };
-                if (this.useCanadaGoogle() && this.mapStyle !== 'night') {
-                    const g = {
-                        url: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=en',
-                        maxNative: 21,
-                        subdomains: '0123',
-                        attrib: '© Google'
-                    };
-                    styles.osm = g;
-                    styles.clean = g;
-                    styles.simple = g;
-                }
-                return styles[this.mapStyle] || styles.clean;
+                return styles[this.mapStyle] || styles.voyager;
             }
 
             isInCanada(lat, lon) {
@@ -1518,21 +1727,6 @@
                 return !!this._inCanada;
             }
 
-            ensureGoogleKey() {
-                if (this.googleApiKey) return this.googleApiKey;
-                try {
-                    this.googleApiKey = localStorage.getItem('tesla_google_key') || '';
-                } catch (_) {}
-                if (!this.googleApiKey) {
-                    const entered = window.prompt('Google Maps API key for Canada (geocoding). Leave blank to use OSM search.');
-                    if (entered && entered.trim()) {
-                        this.googleApiKey = entered.trim();
-                        try { localStorage.setItem('tesla_google_key', this.googleApiKey); } catch (_) {}
-                    }
-                }
-                return this.googleApiKey;
-            }
-
             googleTrafficTileUrl(x, y, z) {
                 const s = String(Math.abs(x + y) % 4);
                 return `https://mt${s}.google.com/vt?lyrs=h@159000000,traffic&x=${x}&y=${y}&z=${z}&hl=en`;
@@ -1544,7 +1738,10 @@
 
             tileUrls() {
                 const style = this.tileConfig();
-                return (style.subdomains || 'abc').split('').map((s) => style.url.replace('{s}', s));
+                const subs = (style.subdomains && String(style.subdomains).length)
+                    ? String(style.subdomains).split('')
+                    : [''];
+                return subs.map((s) => style.url.replace('{s}', s));
             }
 
             integerZoom() {
@@ -1561,29 +1758,38 @@
 
             prefetchAheadTiles(force = false) {
                 if (!this.currentPos) return;
+                // Low: no prefetch. Med/High: short ahead burst so nav stays responsive.
+                if (this.mapQuality === 'low') return;
                 const now = Date.now();
                 const movedM = this._prefetchPos ? this.calculateDistance(this._prefetchPos, this.currentPos) * 1000 : 999;
-                if (!force && this._prefetchAt && now - this._prefetchAt < 1800 && movedM < 80) return;
+                const cool = this.mapQuality === 'med' ? 2800 : 2000;
+                if (!force && this._prefetchAt && now - this._prefetchAt < cool && movedM < 100) return;
                 this._prefetchAt = now;
                 this._prefetchPos = this.currentPos;
 
-                const zoom = this.integerZoom();
+                const zoom = Math.min(this.integerZoom(), this.qualityPreset().maxNativeZoom);
                 const urls = this.tileUrls();
+                const span = this.mapQuality === 'med' ? 180 : 320;
+                const step = this.mapQuality === 'med' ? 90 : 80;
                 const points = [];
-                for (let m = 0; m <= 450; m += 90) {
+                for (let m = 0; m <= span; m += step) {
                     points.push(this.routeCoords.length ? this.pointAlongRoute(m) : this.pointAhead(m));
                 }
                 const seen = new Set();
+                let n = 0;
+                const maxTiles = this.mapQuality === 'med' ? 14 : 28;
                 points.forEach((p) => {
-                    if (!p) return;
+                    if (!p || n >= maxTiles) return;
                     const tile = this.latLngToTile(p[0], p[1], zoom);
                     for (let dx = -1; dx <= 1; dx++) {
                         for (let dy = -1; dy <= 1; dy++) {
+                            if (n >= maxTiles) return;
                             const x = tile.x + dx;
                             const y = tile.y + dy;
                             const key = zoom + '/' + x + '/' + y;
                             if (seen.has(key)) continue;
                             seen.add(key);
+                            n++;
                             const tmpl = urls[Math.abs(x + y) % urls.length];
                             const img = new Image();
                             img.referrerPolicy = 'no-referrer';
@@ -1862,29 +2068,202 @@
             }
 
             glStyleUrl() {
-                if (this.useCanadaGoogle() && this.mapStyle !== 'night') return null; // raster Google via glStyleSpec
-                if (this.mapStyle === 'simple') return 'https://tiles.openfreemap.org/styles/positron';
-                if (this.mapStyle === 'osm') return 'https://tiles.openfreemap.org/styles/bright';
-                if (this.mapStyle === 'night') return 'https://tiles.openfreemap.org/styles/dark';
-                return 'https://tiles.openfreemap.org/styles/liberty';
+                // Vector = full OpenFreeMap (3D buildings). Sat = raster + labels via glStyleSpec.
+                if (this.mapStyle === 'vector') return 'https://tiles.openfreemap.org/styles/liberty';
+                return null;
             }
 
             glStyleSpec() {
                 const style = this.tileConfig();
                 const q = this.qualityPreset();
-                return {
+                const spec = {
                     version: 8,
                     sources: {
                         raster: {
                             type: 'raster',
                             tiles: this.tileUrls(),
                             tileSize: 256,
-                            maxzoom: Math.min(21, Math.max(q.maxNativeZoom, style.maxNative || 18)),
+                            maxzoom: Math.min(q.maxNativeZoom, style.maxNative || 18),
                             attribution: style.attrib
                         }
                     },
                     layers: [{ id: 'basemap', type: 'raster', source: 'raster' }]
                 };
+                if (this.mapStyle === 'sat') {
+                    spec.glyphs = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';
+                }
+                return spec;
+            }
+
+            // Full sat labeling: all roads + buildings (names & house numbers) + POIs.
+            updateSatLabelRadius(_force = false) {}
+
+            ensureSatLabels() {
+                if (!this.glMap || this.mapStyle !== 'sat' || !this.glMap.isStyleLoaded()) return;
+                const before = this.glMap.getLayer('route-glow')
+                    ? 'route-glow'
+                    : (this.glMap.getLayer('route-line') ? 'route-line' : undefined);
+
+                [
+                    'sat-ghost-poi', 'sat-ghost-place', 'sat-ghost-road', 'sat-ghost-building',
+                    'sat-road-label', 'sat-road-label-ref', 'sat-poi-label', 'sat-place-label',
+                    'sat-building-label', 'sat-housenumber'
+                ].forEach((id) => {
+                    if (this.glMap.getLayer(id)) {
+                        try { this.glMap.removeLayer(id); } catch (_) {}
+                    }
+                });
+                if (this.glMap.getSource('sat-labels')) {
+                    try { this.glMap.removeSource('sat-labels'); } catch (_) {}
+                }
+                this._satLabelFeats = null;
+
+                try {
+                    if (!this.glMap.getSource('openmaptiles')) {
+                        this.glMap.addSource('openmaptiles', {
+                            type: 'vector',
+                            url: 'https://tiles.openfreemap.org/planet'
+                        });
+                    }
+
+                    this.glMap.addLayer({
+                        id: 'sat-road-label',
+                        type: 'symbol',
+                        source: 'openmaptiles',
+                        'source-layer': 'transportation_name',
+                        minzoom: 11,
+                        layout: {
+                            'symbol-placement': 'line',
+                            'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']],
+                            'text-font': ['Noto Sans Bold'],
+                            'text-size': [
+                                'interpolate', ['linear'], ['zoom'],
+                                11, 11, 14, 14, 17, 17, 19, 19
+                            ],
+                            'text-max-angle': 35,
+                            'symbol-spacing': 120,
+                            'text-padding': 1
+                        },
+                        paint: {
+                            'text-color': '#ffffff',
+                            'text-halo-color': '#000000',
+                            'text-halo-width': 2.5
+                        }
+                    }, before);
+
+                    this.glMap.addLayer({
+                        id: 'sat-road-label-ref',
+                        type: 'symbol',
+                        source: 'openmaptiles',
+                        'source-layer': 'transportation_name',
+                        minzoom: 10,
+                        filter: ['has', 'ref'],
+                        layout: {
+                            'symbol-placement': 'line',
+                            'text-field': ['get', 'ref'],
+                            'text-font': ['Noto Sans Bold'],
+                            'text-size': 12,
+                            'symbol-spacing': 200
+                        },
+                        paint: {
+                            'text-color': '#b8e0ff',
+                            'text-halo-color': '#000000',
+                            'text-halo-width': 2.2
+                        }
+                    }, before);
+
+                    this.glMap.addLayer({
+                        id: 'sat-building-label',
+                        type: 'symbol',
+                        source: 'openmaptiles',
+                        'source-layer': 'building',
+                        minzoom: 14,
+                        filter: ['has', 'name'],
+                        layout: {
+                            'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']],
+                            'text-font': ['Noto Sans Bold'],
+                            'text-size': [
+                                'interpolate', ['linear'], ['zoom'],
+                                14, 11, 16, 13, 18, 15
+                            ],
+                            'text-max-width': 10,
+                            'text-padding': 2
+                        },
+                        paint: {
+                            'text-color': '#ffe566',
+                            'text-halo-color': '#000000',
+                            'text-halo-width': 2.4
+                        }
+                    }, before);
+
+                    this.glMap.addLayer({
+                        id: 'sat-housenumber',
+                        type: 'symbol',
+                        source: 'openmaptiles',
+                        'source-layer': 'housenumber',
+                        minzoom: 16,
+                        layout: {
+                            'text-field': ['get', 'housenumber'],
+                            'text-font': ['Noto Sans Regular'],
+                            'text-size': 11,
+                            'text-padding': 1
+                        },
+                        paint: {
+                            'text-color': '#f5f0e6',
+                            'text-halo-color': '#000000',
+                            'text-halo-width': 1.8
+                        }
+                    }, before);
+
+                    this.glMap.addLayer({
+                        id: 'sat-poi-label',
+                        type: 'symbol',
+                        source: 'openmaptiles',
+                        'source-layer': 'poi',
+                        minzoom: 13,
+                        filter: ['has', 'name'],
+                        layout: {
+                            'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']],
+                            'text-font': ['Noto Sans Bold'],
+                            'text-size': [
+                                'interpolate', ['linear'], ['zoom'],
+                                13, 11, 16, 13, 18, 15
+                            ],
+                            'text-offset': [0, 0.5],
+                            'text-anchor': 'top',
+                            'text-max-width': 11,
+                            'text-padding': 2
+                        },
+                        paint: {
+                            'text-color': '#fff200',
+                            'text-halo-color': '#000000',
+                            'text-halo-width': 2.4
+                        }
+                    }, before);
+
+                    this.glMap.addLayer({
+                        id: 'sat-place-label',
+                        type: 'symbol',
+                        source: 'openmaptiles',
+                        'source-layer': 'place',
+                        minzoom: 9,
+                        layout: {
+                            'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']],
+                            'text-font': ['Noto Sans Bold'],
+                            'text-size': [
+                                'interpolate', ['linear'], ['zoom'],
+                                9, 12, 12, 15, 15, 18
+                            ]
+                        },
+                        paint: {
+                            'text-color': '#ffffff',
+                            'text-halo-color': '#000000',
+                            'text-halo-width': 2.5
+                        }
+                    }, before);
+                } catch (e) {
+                    console.warn('sat labels', e);
+                }
             }
 
             ensureGlMap() {
@@ -1907,8 +2286,9 @@
                     minZoom: 12,
                     interactive: false,
                     pixelRatio: 1,
-                    antialias: true,
+                    antialias: this.mapStyle === 'vector',
                     renderWorldCopies: false,
+                    maxTileCacheSize: 250,
                     transformRequest: (url, type) => {
                         if (type === 'Tile' && url.includes('core-jams-rdr-cache') && url.includes('l=trf')) {
                             try {
@@ -1943,11 +2323,11 @@
                 }
             }
 
-            applyGlStyle() {
+            applyGlStyle(force = false) {
                 if (!this.glMap) return;
                 const url = this.glStyleUrl();
-                const key = url || ('raster:' + (this.useCanadaGoogle() ? 'google' : this.mapStyle));
-                if (this._glStyleKey === key) return;
+                const key = url || ('raster:' + this.mapStyle + ':' + this.mapQuality);
+                if (!force && this._glStyleKey === key) return;
                 this._glStyleKey = key;
                 this._glStyleUrl = url;
                 this.glMap.setStyle(url || this.glStyleSpec());
@@ -1960,20 +2340,24 @@
 
             polishDriveMap() {
                 if (!this.glMap || !this.glMap.isStyleLoaded()) return;
-                const hide = /poi|housenumber|housename|attraction|shop|airport-label|ferry|park_outline/i;
-                const dim = /place-|city|town|village|suburb|neighbourhood|continent|water_name|waterway-name/i;
-                (this.glMap.getStyle().layers || []).forEach((layer) => {
-                    if (!layer || !layer.id || !this.glMap.getLayer(layer.id)) return;
-                    try {
-                        if (hide.test(layer.id)) {
-                            this.glMap.setLayoutProperty(layer.id, 'visibility', 'none');
-                        } else if (layer.type === 'symbol' && dim.test(layer.id)) {
-                            this.glMap.setPaintProperty(layer.id, 'text-opacity', 0.5);
-                        }
-                    } catch (_) {}
-                });
-                if (this.glMap.getSource('openmaptiles') && !this.glMap.getLayer('tesla-buildings')) {
-                    const night = this.mapStyle === 'night';
+                // Sat: imagery + labels, no 3D. Vector: hide clutter + add 3D buildings.
+                if (this.mapStyle === 'sat') {
+                    this.ensureSatLabels();
+                } else {
+                    const hide = /poi|housenumber|housename|attraction|shop|airport-label|ferry|park_outline/i;
+                    const dim = /place-|city|town|village|suburb|neighbourhood|continent|water_name|waterway-name/i;
+                    (this.glMap.getStyle().layers || []).forEach((layer) => {
+                        if (!layer || !layer.id || !this.glMap.getLayer(layer.id)) return;
+                        try {
+                            if (hide.test(layer.id)) {
+                                this.glMap.setLayoutProperty(layer.id, 'visibility', 'none');
+                            } else if (layer.type === 'symbol' && dim.test(layer.id)) {
+                                this.glMap.setPaintProperty(layer.id, 'text-opacity', 0.5);
+                            }
+                        } catch (_) {}
+                    });
+                }
+                if (this.mapStyle === 'vector' && this.glMap.getSource('openmaptiles') && !this.glMap.getLayer('tesla-buildings')) {
                     try {
                         this.glMap.addLayer({
                             id: 'tesla-buildings',
@@ -1982,7 +2366,7 @@
                             type: 'fill-extrusion',
                             minzoom: 14,
                             paint: {
-                                'fill-extrusion-color': night ? '#2c2c32' : '#cfc8bc',
+                                'fill-extrusion-color': '#cfc8bc',
                                 'fill-extrusion-height': ['coalesce', ['get', 'render_height'], ['get', 'height'], 10],
                                 'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0],
                                 'fill-extrusion-opacity': 0.52
@@ -2004,15 +2388,41 @@
 
             cacheDrivePadding() {
                 if (!this.glMap) return;
-                const h = this.glMap.getContainer().clientHeight || window.innerHeight;
+                const stage = document.getElementById('mapStage');
+                const h = (stage && stage.clientHeight) || this.glMap.getContainer().clientHeight || window.innerHeight;
                 this._camPadH = h;
-                this._camOffsetY = 0;
-                this._camPad = { top: Math.round(h * 0.5), bottom: 0, left: 0, right: 0 };
+                // 1/4 of the screen from the BOTTOM → 75% from the top (road ahead above the car).
+                this._camFocusY = 0.75;
+                const focusY = this._camFocusY;
+                let top = 0;
+                let bottom = 0;
+                if (focusY >= 0.5) {
+                    top = Math.max(1, Math.round(h * (2 * focusY - 1)));
+                } else {
+                    bottom = Math.max(1, Math.round(h * (1 - 2 * focusY)));
+                }
+                this._camPad = { top, bottom, left: 0, right: 0 };
+            }
+
+            pinHudCar(_lng, _lat) {
+                const hud = document.getElementById('hudCar');
+                if (!hud || !this.glMap) return;
+                this.applyCarScale(hud, 'player');
+                const stage = document.getElementById('mapStage');
+                const box = stage || this.glMap.getContainer();
+                const w = box.clientWidth || window.innerWidth;
+                const h = box.clientHeight || window.innerHeight;
+                const focusY = this._camFocusY != null ? this._camFocusY : 0.75;
+                hud.style.left = Math.round(w * 0.5) + 'px';
+                hud.style.top = Math.round(h * focusY) + 'px';
+                hud.style.transform = 'translate(-50%, -50%)';
+                hud.style.transformOrigin = '50% 50%';
             }
 
             getDriveCameraBearing() {
                 const pose = this._drivePose || this.snapDrivePose();
-                if (pose && pose.bearing != null) return pose.bearing;
+                const b = this.routeCameraBearing(pose);
+                if (b != null) return b;
                 return this.heading || 0;
             }
 
@@ -2023,6 +2433,50 @@
                 return d;
             }
 
+            // Bearing at the car — only a short look-ahead so the camera
+            // does not rotate into a turn before the icon reaches it.
+            routeCameraBearing(pose) {
+                const coords = this.routeCoords;
+                if (!coords || coords.length < 2) {
+                    if (this.currentPos && this.destinationPos) {
+                        return this.bearingBetween(this.currentPos, this.destinationPos);
+                    }
+                    return this.heading || 0;
+                }
+                const p = pose || this.snapDrivePose();
+                if (!p) return this.heading || 0;
+                // ~8 m ahead: enough to smooth tiny zigzags, not enough to “pre-turn”.
+                const look = this.pointAlongRouteFrom(p.idx, p.pos, 8);
+                if (look) {
+                    const brg = this.bearingBetween(p.pos, look);
+                    if (Number.isFinite(brg)) {
+                        this._lastGoodBearing = brg;
+                        return brg;
+                    }
+                }
+                if (p.bearing != null) return p.bearing;
+                return this._lastGoodBearing != null ? this._lastGoodBearing : (this.heading || 0);
+            }
+
+            pointAlongRouteFrom(startIdx, startPos, meters) {
+                const coords = this.routeCoords;
+                if (!coords || coords.length < 2) return null;
+                let remaining = Math.max(4, meters);
+                let from = startPos || coords[Math.min(startIdx, coords.length - 1)];
+                let i = Math.max(0, Math.min(startIdx, coords.length - 2));
+                // If start is mid-segment, begin toward coords[i+1]
+                for (; i < coords.length - 1 && remaining > 0; i++) {
+                    const to = coords[i + 1];
+                    const seg = this.calculateDistance(from, to) * 1000;
+                    if (seg >= remaining) {
+                        return this.interpolate(from, to, remaining / Math.max(seg, 0.01));
+                    }
+                    remaining -= seg;
+                    from = to;
+                }
+                return coords[coords.length - 1];
+            }
+
             snapDrivePose() {
                 if (!this.currentPos) return null;
                 if (!this.routeCoords.length) {
@@ -2031,7 +2485,7 @@
                 const coords = this.routeCoords;
                 const locked = this.routeProgressIndex || 0;
                 const from = Math.max(0, locked - 1);
-                const last = Math.min(coords.length - 2, locked + 50);
+                const last = Math.min(coords.length - 2, locked + 60);
                 let bestDist = Infinity;
                 let best = { t: 0, q: this.currentPos, i: locked };
                 for (let i = from; i <= last; i++) {
@@ -2041,19 +2495,16 @@
                         best = { t: proj.t, q: proj.q, i };
                     }
                 }
-                if (best.i < locked && bestDist > 2.2 && locked <= coords.length - 2) {
+                // Prefer forward progress; don't snap backward unless clearly closer.
+                if (best.i < locked && bestDist > 3.5 && locked <= coords.length - 2) {
                     const stay = this.projectOnSegment(this.currentPos, coords[locked], coords[locked + 1]);
                     best = { t: stay.t, q: stay.q, i: locked };
                     bestDist = stay.dist;
                 }
                 if (best.i >= locked) this.routeProgressIndex = best.i;
 
-                const end = coords[Math.min(best.i + 1, coords.length - 1)];
-                let bearing = this.bearingBetween(best.q, end);
-                const rem = this.calculateDistance(best.q, end) * 1000;
-                if (rem < 2 && best.i + 2 < coords.length) {
-                    bearing = this.bearingBetween(end, coords[best.i + 2]);
-                }
+                const look = this.pointAlongRouteFrom(best.i, best.q, 8) || coords[Math.min(best.i + 1, coords.length - 1)];
+                const bearing = this.bearingBetween(best.q, look);
                 const pose = { pos: best.q, bearing, idx: best.i, dist: bestDist };
                 this._drivePose = pose;
                 return pose;
@@ -2114,7 +2565,8 @@
                     opacity: 0.95,
                     dashArray: spec.dash || null,
                     lineJoin: 'round',
-                    lineCap: spec.cap
+                    lineCap: 'round',
+                    smoothFactor: 1.2
                 };
             }
 
@@ -2151,16 +2603,19 @@
                     this.glMap.setPaintProperty('route-glow', 'line-color', color);
                     this.glMap.setPaintProperty('route-glow', 'line-opacity', spec.glow ? 0.28 : 0);
                     this.glMap.setPaintProperty('route-glow', 'line-width', spec.glow ? 16 : 0);
+                    this.glMap.setPaintProperty('route-glow', 'line-blur', spec.glow ? 1.2 : 0);
                 }
                 if (this.glMap.getLayer('route-line')) {
                     this.glMap.setPaintProperty('route-line', 'line-color', color);
                     this.glMap.setPaintProperty('route-line', 'line-width', spec.weight);
                     this.glMap.setPaintProperty('route-line', 'line-opacity', 0.95);
+                    this.glMap.setPaintProperty('route-line', 'line-blur', 0.55);
                     try {
                         if (spec.glDash) this.glMap.setPaintProperty('route-line', 'line-dasharray', spec.glDash);
                         else this.glMap.setPaintProperty('route-line', 'line-dasharray', null);
                     } catch (_) {}
-                    this.glMap.setLayoutProperty('route-line', 'line-cap', spec.cap);
+                    this.glMap.setLayoutProperty('route-line', 'line-cap', 'round');
+                    this.glMap.setLayoutProperty('route-line', 'line-join', 'round');
                 }
             }
 
@@ -2174,7 +2629,12 @@
                         type: 'line',
                         source: 'route',
                         layout: { 'line-join': 'round', 'line-cap': 'round' },
-                        paint: { 'line-color': color, 'line-width': spec.glow ? 16 : 0, 'line-opacity': spec.glow ? 0.28 : 0 }
+                        paint: {
+                            'line-color': color,
+                            'line-width': spec.glow ? 16 : 0,
+                            'line-opacity': spec.glow ? 0.28 : 0,
+                            'line-blur': spec.glow ? 1.2 : 0
+                        }
                     });
                 }
                 if (!this.glMap.getLayer('route-line')) {
@@ -2182,11 +2642,12 @@
                         id: 'route-line',
                         type: 'line',
                         source: 'route',
-                        layout: { 'line-join': 'round', 'line-cap': spec.cap },
+                        layout: { 'line-join': 'round', 'line-cap': 'round' },
                         paint: {
                             'line-color': color,
                             'line-width': spec.weight,
                             'line-opacity': 0.95,
+                            'line-blur': 0.55,
                             ...(spec.glDash ? { 'line-dasharray': spec.glDash } : {})
                         }
                     });
@@ -2197,16 +2658,12 @@
                 const coords = this.routeCoords;
                 if (!pose || !coords.length) return this.currentPos ? [this.currentPos] : [];
                 const i = pose.idx;
-                let start = pose.pos;
-                if (i + 1 < coords.length) {
-                    const next = coords[i + 1];
-                    const seg = this.calculateDistance(pose.pos, next) * 1000;
-                    if (seg > 1.5) start = this.interpolate(pose.pos, next, 1.5 / seg);
-                }
+                // Start exactly at car/camera position so the blue line meets the icon.
+                const start = pose.pos;
                 const out = [start];
                 if (i + 1 < coords.length) {
                     const next = coords[i + 1];
-                    if (this.calculateDistance(start, next) * 1000 > 0.4) out.push(next);
+                    if (this.calculateDistance(start, next) * 1000 > 0.35) out.push(next);
                 }
                 for (let k = i + 2; k < coords.length; k++) out.push(coords[k]);
                 return out;
@@ -2243,7 +2700,7 @@
 
             smoothRoute(raw) {
                 if (!raw || raw.length < 3) return raw ? raw.slice() : [];
-                const coords = this.collapseClosePoints(raw, 2.4);
+                const coords = this.collapseClosePoints(raw, 2.2);
                 const out = [coords[0]];
                 for (let i = 1; i < coords.length - 1; i++) {
                     const a = coords[i - 1];
@@ -2251,16 +2708,17 @@
                     const b = coords[i + 1];
                     const turn = this.turnAngleDeg(a, v, b);
                     const absTurn = Math.abs(turn);
-                    if (absTurn < 16) {
+                    // Keep near-straight segments; soften real bends a little.
+                    if (absTurn < 12) {
                         out.push(v);
                         continue;
                     }
                     const dIn = this.calculateDistance(a, v) * 1000;
                     const dOut = this.calculateDistance(v, b) * 1000;
-                    let radius = Math.min(38, 10 + absTurn * 0.22);
-                    const maxOff = Math.min(dIn * 0.42, dOut * 0.42);
+                    let radius = Math.min(24, 6 + absTurn * 0.2);
+                    const maxOff = Math.min(dIn * 0.38, dOut * 0.38);
                     const tanHalf = Math.tan((absTurn * Math.PI / 180) / 2);
-                    if (tanHalf < 0.06 || maxOff < 3.5) {
+                    if (tanHalf < 0.05 || maxOff < 2.8) {
                         out.push(v);
                         continue;
                     }
@@ -2269,7 +2727,7 @@
                         offset = maxOff;
                         radius = offset * tanHalf;
                     }
-                    if (radius < 5) {
+                    if (radius < 4) {
                         out.push(v);
                         continue;
                     }
@@ -2286,13 +2744,13 @@
                     if (Math.sign(sweep) !== Math.sign(turn) && Math.abs(turn) > 1) {
                         sweep += sweep > 0 ? -360 : 360;
                     }
-                    const steps = Math.max(6, Math.round(absTurn / 9));
+                    const steps = Math.max(5, Math.round(absTurn / 8));
                     for (let s = 0; s <= steps; s++) {
                         out.push(this.offsetByMeters(center, a1 + sweep * (s / steps), radius));
                     }
                 }
                 out.push(coords[coords.length - 1]);
-                return this.collapseClosePoints(out, 1.4);
+                return this.collapseClosePoints(out, 1.2);
             }
 
             startDriveCam() {
@@ -2320,55 +2778,57 @@
                 const dt = Math.min(0.05, Math.max(0.008, (ts - (this._camTs || ts)) / 1000));
                 this._camTs = ts;
                 const pose = this.snapDrivePose();
-                const onLine = pose && pose.dist <= 12;
+                const onLine = pose && pose.dist <= 28;
                 const target = onLine ? pose.pos : this.currentPos;
                 if (onLine) this.paintRemainingRoute(pose);
                 const zoom = this.integerZoom();
                 const pitch = Math.max(0, Math.min(70, this.currentCamera().angle));
-                const want = (onLine && pose.bearing != null)
-                    ? pose.bearing
-                    : (this._headingTarget != null ? this._headingTarget : (this.heading || 0));
+                const want = this.routeCameraBearing(pose);
+                this._headingTarget = want;
                 let db = this.headingDelta(this.heading || want, want);
-                if (Math.abs(db) > 150 || Math.abs(db) < 3) {
+                if (Math.abs(db) < 0.35) {
+                    db = 0;
+                } else if (Math.abs(db) > 90) {
+                    this.heading = want;
                     db = 0;
                 } else {
-                    db *= (1 - Math.exp(-12 * dt));
-                    const max = 140 * dt;
+                    // Slightly softer turn so it tracks the car through corners.
+                    db *= (1 - Math.exp(-9 * dt));
+                    const max = 120 * dt;
                     if (Math.abs(db) > max) db = Math.sign(db) * max;
+                    this.heading = ((this.heading || want) + db + 360) % 360;
                 }
-                this.heading = ((this.heading || want) + db + 360) % 360;
+                if (!Number.isFinite(this.heading)) this.heading = want;
                 if (db) this.updateCompassDisplay();
-                if (!this._cam) {
-                    this._cam = { lng: target[1], lat: target[0], bearing: this.heading, pitch, zoom };
-                }
-                const movedM = this.calculateDistance([this._cam.lat, this._cam.lng], target) * 1000;
-                this._cam.lng = target[1];
-                this._cam.lat = target[0];
-                this._cam.pitch = pitch;
-                this._cam.zoom = zoom;
-                this._cam.bearing = this.heading;
+                // Snap camera to car — no lag (fixes icon mismatch).
+                this._cam = {
+                    lng: target[1],
+                    lat: target[0],
+                    bearing: this.heading,
+                    pitch,
+                    zoom
+                };
                 const h = this.glMap.getContainer().clientHeight;
-                if (!this._camPad || this._camPadH !== h || !this._camPad.top) this.cacheDrivePadding();
-                const padReady = this._camPad && this._camPad.top > 0;
+                if (!this._camPad || this._camPadH !== h) this.cacheDrivePadding();
+                const padReady = !!this._camPad;
                 this.tickTrafficCars(dt);
-                const hud = document.getElementById('hudCar');
-                if (hud) this.applyCarScale(hud, 'player');
-                if (padReady && movedM < 0.16 && Math.abs(db) < 0.35 && this._camSettled) {
-                    this.hideGlCar();
-                    return;
-                }
-                this._camSettled = !!padReady;
+                this.smoothDriveProgress(dt, pose);
+                this.updateSatLabelRadius(false);
                 try {
-                    this.glMap.setPadding(this._camPad);
-                    this.glMap.jumpTo({
-                        center: [this._cam.lng, this._cam.lat],
-                        around: [this._cam.lng, this._cam.lat],
-                        zoom: this._cam.zoom,
-                        pitch: this._cam.pitch,
-                        bearing: this._cam.bearing,
-                        padding: this._camPad
-                    });
+                    if (padReady) {
+                        this.glMap.setPadding(this._camPad);
+                        this.glMap.jumpTo({
+                            center: [this._cam.lng, this._cam.lat],
+                            around: [this._cam.lng, this._cam.lat],
+                            zoom: this._cam.zoom,
+                            pitch: this._cam.pitch,
+                            bearing: this._cam.bearing,
+                            padding: this._camPad
+                        });
+                    }
                 } catch (_) {}
+                this._camSettled = padReady;
+                this.pinHudCar(this._cam.lng, this._cam.lat);
                 this.hideGlCar();
             }
 
@@ -2385,23 +2845,25 @@
                 const size = this.carPixelSize(role);
                 el.style.width = size.w + 'px';
                 el.style.height = size.h + 'px';
-                const pitch = this.glMap ? this.glMap.getPitch() : (this.currentCamera().angle || 56);
-                const tilt = Math.max(8, Math.min(28, 8 + pitch * 0.28));
-                el.style.setProperty('--car-tilt', tilt.toFixed(1) + 'deg');
+            }
+
+            carSizeScale() {
+                const scales = { s: 1.15, m: 1.55, l: 2.15, xl: 2.85 };
+                return scales[this.carSize] || 2.15;
             }
 
             carPixelSize(role = 'traffic') {
                 const z = this.glMap && this.glMap.getZoom ? this.glMap.getZoom() : this.integerZoom();
                 const lat = (this.currentPos && this.currentPos[0]) || 40.18;
                 const mpp = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, z);
-                // Real Tesla ~4.7×1.9 m. Boost so cars read next to extruded buildings.
-                const lengthM = role === 'player' ? 5.0 : 4.6;
-                const widthM = role === 'player' ? 2.15 : 2.0;
-                const boost = role === 'player' ? 4.2 : 3.4;
-                const minH = role === 'player' ? 88 : 42;
-                const maxH = role === 'player' ? 220 : 150;
-                const minW = role === 'player' ? 44 : 22;
-                const maxW = role === 'player' ? 110 : 72;
+                const scale = this.carSizeScale();
+                const lengthM = (role === 'player' ? 5.2 : 4.6) * scale;
+                const widthM = (role === 'player' ? 2.2 : 2.0) * scale;
+                const boost = role === 'player' ? 5.8 : 3.6;
+                const minH = Math.round((role === 'player' ? 120 : 42) * scale);
+                const maxH = Math.round((role === 'player' ? 420 : 190) * Math.max(1, scale * 0.85));
+                const minW = Math.round((role === 'player' ? 58 : 22) * scale);
+                const maxW = Math.round((role === 'player' ? 200 : 90) * Math.max(1, scale * 0.85));
                 const h = Math.round(Math.max(minH, Math.min(maxH, (lengthM / mpp) * boost)));
                 const w = Math.round(Math.max(minW, Math.min(maxW, (widthM / mpp) * boost)));
                 return { w, h };
@@ -2469,6 +2931,7 @@
             }
 
             setMapStyle(style) {
+                if (!this.isMapStyleId(style)) return;
                 this.mapStyle = style;
                 this.applyMapQuality(this.mapQuality, false);
             }
@@ -2683,41 +3146,7 @@
             }
             
             getRouteAheadBearing() {
-                if (!this.routeCoords.length) {
-                    if (this.currentPos && this.destinationPos) {
-                        return this.bearingBetween(this.currentPos, this.destinationPos);
-                    }
-                    return null;
-                }
-                if (!this.currentPos) return null;
-
-                const coords = this.routeCoords;
-                const start = Math.max(0, (this.routeProgressIndex || 0) - 2);
-                const last = Math.min(coords.length - 2, start + 40);
-                let bestDist = Infinity;
-                let bestIdx = start;
-
-                for (let i = start; i <= last; i++) {
-                    const proj = this.projectOnSegment(this.currentPos, coords[i], coords[i + 1]);
-                    if (proj.dist < bestDist) {
-                        bestDist = proj.dist;
-                        bestIdx = i;
-                    }
-                }
-
-                let i = bestIdx;
-                while (i < coords.length - 2 && this.calculateDistance(coords[i], coords[i + 1]) * 1000 < 2) {
-                    i += 1;
-                }
-                const bearing = this.bearingBetween(coords[i], coords[i + 1]);
-                if (this._lastGoodBearing != null) {
-                    let d = bearing - this._lastGoodBearing;
-                    if (d > 180) d -= 360;
-                    if (d < -180) d += 360;
-                    if (Math.abs(d) > 150) return this._lastGoodBearing;
-                }
-                this._lastGoodBearing = bearing;
-                return bearing;
+                return this.routeCameraBearing(this._drivePose || this.snapDrivePose());
             }
 
             projectOnSegment(p, a, b) {
@@ -2907,12 +3336,8 @@
                 // Always face the route you should drive — never the phone compass.
                 if (this.isNavigating) {
                     const pose = this.snapDrivePose();
-                    if (pose && pose.dist <= 15) {
-                        this.setHeading(pose.bearing, { snap: true });
-                    } else {
-                        const routeBearing = this.getRouteAheadBearing();
-                        if (routeBearing !== null) this.setHeading(routeBearing, { snap: true });
-                    }
+                    const rb = this.routeCameraBearing(pose);
+                    if (rb != null) this.setHeading(rb, { snap: true, force: true });
                 } else if (this.lastPos) {
                     const moved = this.calculateDistance(this.lastPos, this.currentPos) * 1000;
                     if (moved > 1.5) {
@@ -2962,6 +3387,7 @@
                 
                 document.getElementById('navDistance').textContent = distance.toFixed(1) + ' km';
                 this.updateTurnInstruction(distance);
+                this.updateDriveProgress();
                 
                 if (distance < 0.05 && !this.simulating) {
                     this.notify('🎯 You have arrived!', 'success');
@@ -2970,6 +3396,93 @@
                         this.stopNavigation();
                         this.clear();
                     }, 3000);
+                }
+            }
+
+            routeMetersToIndex(idx, endPos) {
+                const coords = this.routeCoords;
+                if (!coords || coords.length < 2) return 0;
+                const last = Math.max(0, Math.min(idx, coords.length - 1));
+                let m = 0;
+                for (let i = 0; i < last; i++) {
+                    m += this.calculateDistance(coords[i], coords[i + 1]) * 1000;
+                }
+                if (endPos && last < coords.length) {
+                    m += this.calculateDistance(coords[last], endPos) * 1000;
+                }
+                return m;
+            }
+
+            updateDriveProgress() {
+                // Sample target only — visual bar is eased every frame in smoothDriveProgress.
+                if (!this.isNavigating || !this.routeCoords || this.routeCoords.length < 2) {
+                    this._progressTargetPct = 0;
+                    this._progressTargetLeftM = 0;
+                    this._progressPct = 0;
+                    this._progressLeftM = 0;
+                    this._progressLabelAt = 0;
+                    const fill = document.getElementById('driveProgressFill');
+                    const kmEl = document.getElementById('driveProgressKm');
+                    const pctEl = document.getElementById('driveProgressPct');
+                    if (fill) fill.style.width = '0%';
+                    if (kmEl) kmEl.textContent = '--';
+                    if (pctEl) pctEl.textContent = '0%';
+                    return;
+                }
+                const total = this._routeTotalM || this.routeLengthMeters() || 1;
+                const pose = this._drivePose || this.snapDrivePose();
+                let done = 0;
+                if (pose) done = this.routeMetersToIndex(pose.idx, pose.pos);
+                done = Math.max(0, Math.min(total, done));
+                // Don't jump backward on GPS noise (allow tiny rewind only).
+                if (this._progressDoneM != null && done + 8 < this._progressDoneM && done < total * 0.98) {
+                    done = this._progressDoneM;
+                } else {
+                    this._progressDoneM = done;
+                }
+                this._progressTargetLeftM = Math.max(0, total - done);
+                this._progressTargetPct = Math.max(0, Math.min(100, (done / total) * 100));
+                if (this._progressPct == null) this._progressPct = this._progressTargetPct;
+                if (this._progressLeftM == null) this._progressLeftM = this._progressTargetLeftM;
+                if (!this._camRaf) this.smoothDriveProgress(0.25, pose);
+            }
+
+            smoothDriveProgress(dt, pose) {
+                if (!this.isNavigating) return;
+                // Refresh target from live pose each frame for continuous motion.
+                if (this.routeCoords && this.routeCoords.length > 1) {
+                    const total = this._routeTotalM || this.routeLengthMeters() || 1;
+                    const p = pose || this._drivePose || this.snapDrivePose();
+                    if (p) {
+                        let done = this.routeMetersToIndex(p.idx, p.pos);
+                        done = Math.max(0, Math.min(total, done));
+                        if (this._progressDoneM != null && done + 8 < this._progressDoneM && done < total * 0.98) {
+                            done = Math.min(total, this._progressDoneM + Math.max(0, (this.speed || 0) / 3.6 * dt * 0.35));
+                        } else {
+                            this._progressDoneM = done;
+                        }
+                        this._progressTargetLeftM = Math.max(0, total - done);
+                        this._progressTargetPct = Math.max(0, Math.min(100, (done / total) * 100));
+                    }
+                }
+                if (this._progressPct == null) this._progressPct = this._progressTargetPct || 0;
+                if (this._progressLeftM == null) this._progressLeftM = this._progressTargetLeftM || 0;
+                const ease = 1 - Math.exp(-3.2 * Math.max(0.008, dt));
+                this._progressPct += ((this._progressTargetPct || 0) - this._progressPct) * ease;
+                this._progressLeftM += ((this._progressTargetLeftM || 0) - this._progressLeftM) * ease;
+                const fill = document.getElementById('driveProgressFill');
+                if (fill) fill.style.width = this._progressPct.toFixed(2) + '%';
+                const now = performance.now();
+                if (!this._progressLabelAt || now - this._progressLabelAt > 180) {
+                    this._progressLabelAt = now;
+                    const kmEl = document.getElementById('driveProgressKm');
+                    const pctEl = document.getElementById('driveProgressPct');
+                    const leftM = this._progressLeftM;
+                    if (kmEl) {
+                        if (leftM < 1000) kmEl.textContent = Math.max(0, Math.round(leftM)) + ' m';
+                        else kmEl.textContent = (leftM / 1000).toFixed(leftM >= 10000 ? 0 : 1) + ' km';
+                    }
+                    if (pctEl) pctEl.textContent = Math.round(this._progressPct) + '%';
                 }
             }
             
@@ -3052,7 +3565,6 @@
                         this.searchMode = btn.dataset.mode;
                         if (btn.dataset.mode === 'google') {
                             this._inCanada = true;
-                            this.ensureGoogleKey();
                             this.applyMapQuality(this.mapQuality, true);
                             this.syncTrafficButtons();
                             if (this.yandexTraffic) this.refreshYandexTraffic(true);
@@ -3088,8 +3600,10 @@
                 
                 document.getElementById('goBtn').onclick = () => this.calculateRoute();
                 
-                [document.getElementById('fromInput'), document.getElementById('toInput')].forEach(input => {
-                    input.onkeypress = (e) => { if (e.key === 'Enter') this.calculateRoute(); };
+                this.bindSearchSuggest('fromInput', 'fromSuggest', 'from');
+                this.bindSearchSuggest('toInput', 'toSuggest', 'to');
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('.input-row-wrap')) this.hideAllSuggest();
                 });
                 
                 document.getElementById('locateBtn').onclick = () => this.center();
@@ -3428,7 +3942,9 @@
                 const fromValue = document.getElementById('fromInput').value.trim();
                 const toValue = document.getElementById('toInput').value.trim();
                 
-                let startCoords = fromValue ? await this.geocodeAddress(fromValue) : this.currentPos;
+                let startCoords = fromValue
+                    ? await this.resolveSearch('from', fromValue)
+                    : this.currentPos;
                 
                 if (!startCoords) {
                     this.notify('⚠️ Enter start or enable GPS', 'error');
@@ -3441,87 +3957,310 @@
                 }
                 
                 this.notify('🔍 Finding destination...', 'info');
-                const destCoords = await this.geocodeAddress(toValue);
-                if (!destCoords) {
+                const destHit = await this.resolveSearchFull('to', toValue);
+                if (!destHit || !destHit.coords) {
                     this.notify('❌ Destination not found', 'error');
                     return;
                 }
                 
-                this._pendingDest = { name: toValue, address: toValue, lat: destCoords[0], lng: destCoords[1] };
-                this.createRoute(startCoords, destCoords);
+                this._pendingDest = {
+                    name: destHit.title || toValue,
+                    address: destHit.subtitle || destHit.title || toValue,
+                    lat: destHit.coords[0],
+                    lng: destHit.coords[1]
+                };
+                document.getElementById('toInput').value = destHit.title || toValue;
+                this.createRoute(startCoords, destHit.coords);
+            }
+
+            bindSearchSuggest(inputId, boxId, slot) {
+                const input = document.getElementById(inputId);
+                const box = document.getElementById(boxId);
+                if (!input || !box) return;
+                input.addEventListener('input', () => {
+                    this._pickedSearch[slot] = null;
+                    const q = input.value.trim();
+                    clearTimeout(this._suggestTimers[slot]);
+                    if (q.length < 2) {
+                        this.hideSuggest(slot);
+                        return;
+                    }
+                    this._suggestTimers[slot] = setTimeout(() => this.runSuggest(slot, q), 280);
+                });
+                input.addEventListener('focus', () => {
+                    if ((this._suggest[slot] || []).length) this.renderSuggest(slot);
+                });
+                input.addEventListener('keydown', (e) => {
+                    const items = this._suggest[slot] || [];
+                    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                        if (!items.length) return;
+                        e.preventDefault();
+                        const cur = items.findIndex((x) => x._active);
+                        items.forEach((x) => { x._active = false; });
+                        let next = e.key === 'ArrowDown' ? cur + 1 : cur - 1;
+                        if (next < 0) next = items.length - 1;
+                        if (next >= items.length) next = 0;
+                        items[next]._active = true;
+                        this.renderSuggest(slot);
+                        return;
+                    }
+                    if (e.key === 'Enter') {
+                        const active = items.find((x) => x._active) || items[0];
+                        if (box.classList.contains('open') && active) {
+                            e.preventDefault();
+                            this.applySuggest(slot, active);
+                            return;
+                        }
+                        this.calculateRoute();
+                    }
+                    if (e.key === 'Escape') this.hideSuggest(slot);
+                });
+            }
+
+            hideSuggest(slot) {
+                const box = document.getElementById(slot === 'from' ? 'fromSuggest' : 'toSuggest');
+                if (box) box.classList.remove('open');
+            }
+
+            hideAllSuggest() {
+                this.hideSuggest('from');
+                this.hideSuggest('to');
+            }
+
+            async runSuggest(slot, query) {
+                const hits = await this.fetchSearchSuggestions(query);
+                this._suggest[slot] = hits;
+                if (document.getElementById(slot === 'from' ? 'fromInput' : 'toInput').value.trim() !== query) return;
+                this.renderSuggest(slot);
+            }
+
+            renderSuggest(slot) {
+                const box = document.getElementById(slot === 'from' ? 'fromSuggest' : 'toSuggest');
+                const hits = this._suggest[slot] || [];
+                if (!box) return;
+                if (!hits.length) {
+                    box.classList.remove('open');
+                    box.innerHTML = '';
+                    return;
+                }
+                box.innerHTML = hits.map((h, i) => {
+                    const dist = h.distKm != null ? (h.distKm < 1 ? Math.round(h.distKm * 1000) + ' m' : h.distKm.toFixed(1) + ' km') : '';
+                    return `<button type="button" class="suggest-item${h._active ? ' active' : ''}" data-slot="${slot}" data-idx="${i}">
+                        <div class="s-title">${this.escapeHtml(h.title)}</div>
+                        <div class="s-sub">${this.escapeHtml(h.subtitle || '')}</div>
+                        ${dist ? `<div class="s-meta">${dist} · ${this.escapeHtml(h.source || '')}</div>` : ''}
+                    </button>`;
+                }).join('');
+                box.classList.add('open');
+                box.querySelectorAll('.suggest-item').forEach((btn) => {
+                    btn.onmousedown = (e) => {
+                        e.preventDefault();
+                        const hit = this._suggest[btn.dataset.slot][+btn.dataset.idx];
+                        if (hit) this.applySuggest(btn.dataset.slot, hit);
+                    };
+                });
+            }
+
+            applySuggest(slot, hit) {
+                const input = document.getElementById(slot === 'from' ? 'fromInput' : 'toInput');
+                if (input) input.value = hit.title;
+                this._pickedSearch[slot] = hit;
+                this.hideSuggest(slot);
+            }
+
+            searchBias() {
+                if (this.currentPos) return { lat: this.currentPos[0], lon: this.currentPos[1] };
+                const c = this.map ? this.map.getCenter() : null;
+                if (c) return { lat: c.lat, lon: c.lng };
+                return { lat: 40.1872, lon: 44.5152 };
+            }
+
+            async fetchSearchSuggestions(query) {
+                const q = String(query || '').trim();
+                if (q.length < 2) return [];
+                const bias = this.searchBias();
+                const tasks = [];
+                if (this.searchMode === 'yandex' || !this.useCanadaGoogle()) {
+                    tasks.push(this.suggestYandex(q, bias));
+                }
+                tasks.push(this.suggestPhoton(q, bias));
+                if (this.searchMode === 'osm' || this.searchMode === 'google' || this.useCanadaGoogle()) {
+                    tasks.push(this.suggestOSM(q, bias));
+                }
+                const batches = await Promise.all(tasks);
+                const merged = [];
+                const seen = new Set();
+                batches.flat().forEach((h) => {
+                    if (!h || h.lat == null || h.lon == null) return;
+                    const key = h.lat.toFixed(4) + ',' + h.lon.toFixed(4) + '|' + (h.title || '').slice(0, 24).toLowerCase();
+                    if (seen.has(key)) return;
+                    seen.add(key);
+                    h.distKm = this.calculateDistance([bias.lat, bias.lon], [h.lat, h.lon]);
+                    merged.push(h);
+                });
+                merged.sort((a, b) => {
+                    const da = a.distKm == null ? 9999 : a.distKm;
+                    const db = b.distKm == null ? 9999 : b.distKm;
+                    if (da !== db) return da - db;
+                    return (a.title || '').length - (b.title || '').length;
+                });
+                return merged.slice(0, 8);
+            }
+
+            async suggestYandex(query, bias) {
+                try {
+                    const lang = this.inYandexTrafficCoverage(bias.lat, bias.lon) ? 'ru_RU' : 'en_US';
+                    const params = new URLSearchParams({
+                        format: 'json',
+                        geocode: query,
+                        results: '8',
+                        lang,
+                        ll: `${bias.lon},${bias.lat}`,
+                        spn: '0.55,0.55',
+                        rspn: '1'
+                    });
+                    const res = await fetch(`https://geocode-maps.yandex.ru/1.x/?${params.toString()}`);
+                    if (!res.ok) return [];
+                    const data = await res.json();
+                    const members = data?.response?.GeoObjectCollection?.featureMember || [];
+                    return members.map((m) => {
+                        const g = m.GeoObject;
+                        if (!g || !g.Point || !g.Point.pos) return null;
+                        const [lon, lat] = g.Point.pos.split(' ').map(Number);
+                        const title = g.name || g.metaDataProperty?.GeocoderMetaData?.text || query;
+                        const subtitle = g.description || g.metaDataProperty?.GeocoderMetaData?.text || '';
+                        return { title, subtitle, lat, lon, source: 'Yandex' };
+                    }).filter(Boolean);
+                } catch (_) {
+                    return [];
+                }
+            }
+
+            async suggestPhoton(query, bias) {
+                try {
+                    const params = new URLSearchParams({
+                        q: query,
+                        lat: String(bias.lat),
+                        lon: String(bias.lon),
+                        limit: '6',
+                        lang: 'en'
+                    });
+                    const res = await fetch(`https://photon.komoot.io/api/?${params.toString()}`);
+                    if (!res.ok) return [];
+                    const data = await res.json();
+                    return (data.features || []).map((f) => {
+                        const p = f.properties || {};
+                        const c = f.geometry && f.geometry.coordinates;
+                        if (!c) return null;
+                        const title = p.name || p.street || p.city || query;
+                        const parts = [p.street, p.city || p.town || p.village, p.state, p.country].filter(Boolean);
+                        return {
+                            title,
+                            subtitle: parts.filter((x, i, a) => a.indexOf(x) === i).join(', '),
+                            lat: c[1],
+                            lon: c[0],
+                            source: 'Maps'
+                        };
+                    }).filter(Boolean);
+                } catch (_) {
+                    return [];
+                }
+            }
+
+            async suggestOSM(query, bias) {
+                try {
+                    const d = 1.8;
+                    const params = new URLSearchParams({
+                        format: 'json',
+                        q: query,
+                        limit: '6',
+                        addressdetails: '1',
+                        viewbox: `${bias.lon - d},${bias.lat + d},${bias.lon + d},${bias.lat - d}`,
+                        bounded: '0'
+                    });
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+                        headers: { 'User-Agent': 'TeslaNavigator/1.0' }
+                    });
+                    if (!res.ok) return [];
+                    const rows = await res.json();
+                    return (rows || []).map((r) => ({
+                        title: (r.display_name || '').split(',').slice(0, 2).join(',').trim() || query,
+                        subtitle: r.display_name || '',
+                        lat: parseFloat(r.lat),
+                        lon: parseFloat(r.lon),
+                        source: 'OSM'
+                    })).filter((h) => Number.isFinite(h.lat) && Number.isFinite(h.lon));
+                } catch (_) {
+                    return [];
+                }
+            }
+
+            async resolveSearch(slot, text) {
+                const hit = await this.resolveSearchFull(slot, text);
+                return hit ? hit.coords : null;
+            }
+
+            async resolveSearchFull(slot, text) {
+                const picked = this._pickedSearch[slot];
+                if (picked && picked.lat != null && picked.lon != null) {
+                    const same = !text || String(picked.title || '').toLowerCase() === String(text).toLowerCase()
+                        || String(text).toLowerCase().includes(String(picked.title || '').toLowerCase().slice(0, 12));
+                    if (same || String(picked.title) === text) {
+                        return {
+                            title: picked.title,
+                            subtitle: picked.subtitle,
+                            coords: [picked.lat, picked.lon]
+                        };
+                    }
+                }
+                const hits = await this.fetchSearchSuggestions(text);
+                if (hits.length) {
+                    const best = hits[0];
+                    this._pickedSearch[slot] = best;
+                    return { title: best.title, subtitle: best.subtitle, coords: [best.lat, best.lon] };
+                }
+                const coords = await this.geocodeAddress(text);
+                if (!coords) return null;
+                return { title: text, subtitle: '', coords };
             }
             
             async geocodeAddress(address) {
                 try {
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                    const inCa = this.useCanadaGoogle() || (this.currentPos && this.isInCanada(this.currentPos[0], this.currentPos[1]));
-                    if (inCa || this.searchMode === 'google') {
-                        const g = await this.geocodeWithGoogle(address);
-                        if (g) return g;
-                        return this.geocodeWithOSM(address);
-                    }
-                    const outsideYa = this.currentPos && !this.inYandexTrafficCoverage(this.currentPos[0], this.currentPos[1]);
-                    if (this.searchMode === 'yandex' && !outsideYa) {
-                        const url = `https://geocode-maps.yandex.ru/1.x/?apikey=&geocode=${encodeURIComponent(address)}&format=json&lang=en_US`;
-                        const res = await fetch(url);
-                        if (!res.ok) return this.geocodeWithOSM(address);
-                        const data = await res.json();
-                        const geoObj = data?.response?.GeoObjectCollection?.featureMember?.[0]?.GeoObject;
-                        if (!geoObj) return this.geocodeWithOSM(address);
-                        const coords = geoObj.Point.pos.split(' ');
-                        return [parseFloat(coords[1]), parseFloat(coords[0])];
-                    }
+                    const hits = await this.fetchSearchSuggestions(address);
+                    if (hits.length) return [hits[0].lat, hits[0].lon];
                     return this.geocodeWithOSM(address);
                 } catch {
                     return this.geocodeWithOSM(address);
                 }
             }
-
-            async geocodeWithGoogle(address) {
-                const key = this.ensureGoogleKey();
-                if (!key) return null;
-                try {
-                    const params = new URLSearchParams({
-                        address: address,
-                        key: key,
-                        region: 'ca',
-                        language: 'en'
-                    });
-                    if (this.currentPos) {
-                        params.set('location', `${this.currentPos[0]},${this.currentPos[1]}`);
-                    }
-                    const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?${params.toString()}`);
-                    if (!res.ok) return null;
-                    const data = await res.json();
-                    const hit = data && data.results && data.results[0];
-                    if (!hit || !hit.geometry || !hit.geometry.location) return null;
-                    return [hit.geometry.location.lat, hit.geometry.location.lng];
-                } catch (_) {
-                    return null;
-                }
-            }
             
             async geocodeWithOSM(address) {
                 try {
+                    const bias = this.searchBias();
+                    const d = 2.5;
                     const params = new URLSearchParams({
                         format: 'json',
                         q: address,
-                        limit: '1'
+                        limit: '5',
+                        viewbox: `${bias.lon - d},${bias.lat + d},${bias.lon + d},${bias.lat - d}`,
+                        bounded: '0'
                     });
-                    // Bias toward current map/GPS area (works in Canada, Armenia, etc.).
-                    if (this.currentPos) {
-                        const lat = this.currentPos[0];
-                        const lon = this.currentPos[1];
-                        const d = 2.5;
-                        params.set('viewbox', `${lon - d},${lat + d},${lon + d},${lat - d}`);
-                        params.set('bounded', '0');
-                    }
                     const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
                         headers: { 'User-Agent': 'TeslaNavigator/1.0' }
                     });
                     if (!res.ok) return null;
                     const results = await res.json();
-                    return results.length > 0 ? [parseFloat(results[0].lat), parseFloat(results[0].lon)] : null;
+                    if (!results.length) return null;
+                    let best = results[0];
+                    let bestD = Infinity;
+                    results.forEach((r) => {
+                        const dist = this.calculateDistance([bias.lat, bias.lon], [parseFloat(r.lat), parseFloat(r.lon)]);
+                        if (dist < bestD) {
+                            bestD = dist;
+                            best = r;
+                        }
+                    });
+                    return [parseFloat(best.lat), parseFloat(best.lon)];
                 } catch {
                     return null;
                 }
@@ -3610,6 +4349,8 @@
                         this.currentInstruction = 0;
                         
                         this.routeCoords = (route.coordinates || []).map(c => [c.lat, c.lng]);
+                        this._routeTotalM = this.routeLengthMeters();
+                        this._progressDoneM = 0;
                         this.routeProgressIndex = 0;
                         this._glRouteIdx = -1;
                         this.offRouteHits = 0;
@@ -3680,6 +4421,13 @@
                 this.isNavigating = true;
                 this.routeProgressIndex = 0;
                 this.offRouteHits = 0;
+                this._progressDoneM = 0;
+                this._progressPct = 0;
+                this._progressLeftM = null;
+                this._progressTargetPct = 0;
+                this._progressTargetLeftM = null;
+                this._progressLabelAt = 0;
+                document.body.classList.add('driving');
                 
                 document.getElementById('navBar').classList.remove('hidden');
                 document.getElementById('turnInstruction').classList.remove('hidden');
@@ -3703,6 +4451,7 @@
                 this.applyDriveView(true);
                 
                 this.updateNavigationInfo();
+                this.updateDriveProgress();
                 this.notify('🧭 Looking straight along your route', 'success');
             }
             
@@ -3714,6 +4463,7 @@
                 this.offRouteHits = 0;
                 clearTimeout(this._driveViewTimer);
                 clearTimeout(this._driveViewTimer2);
+                document.body.classList.remove('driving');
                 
                 document.getElementById('navBar').classList.add('hidden');
                 document.getElementById('turnInstruction').classList.add('hidden');
@@ -3721,6 +4471,7 @@
                 const placesPanel = document.getElementById('placesPanel');
                 if (placesPanel) placesPanel.classList.remove('hidden-ui');
                 this.setPlacesHidden(!!this.placesHidden);
+                this.updateDriveProgress();
                 
                 this.compassMode = false;
                 document.getElementById('compassBtn').classList.remove('active');
@@ -3996,73 +4747,13 @@
                 this.trafficCars = [];
             }
 
-            seedTrafficCars(force = false) {
-                if (!this.glMap || !this.isNavigating || !this.routeCoords.length || !this.currentPos) {
-                    this.clearTrafficCars();
-                    return;
-                }
-                const want = this.yandexTraffic ? this.trafficCount() : 6;
-                if (!force && this.trafficCars.length === want) return;
+            seedTrafficCars(_force = false) {
+                // Moving traffic cars disabled.
                 this.clearTrafficCars();
-                const kinds = ['m3', 'my', 'ms', 'mx'];
-                const colors = ['#f2f4f8', '#1c1c1e', '#3e6ae1', '#8e9aab', '#c0392b', '#2c3e50', '#bdc3c7', '#4a6fa5'];
-                const dense = (this._yaLevel || 0) >= 5;
-                const span = Math.max(50, this.routeLengthMeters() - 28);
-                this._routeLenM = span;
-                for (let i = 0; i < want; i++) {
-                    // Right-hand traffic: same direction = right of centerline (+), oncoming = left (−).
-                    const oncoming = i % 3 === 0;
-                    const lane = oncoming ? -3.2 : 3.0;
-                    const ahead = 18 + (i + 0.35) * (span / want);
-                    const mps = oncoming
-                        ? (dense ? 7 : 12)
-                        : Math.max(4, (this.speed || 40) / 3.6 + (dense ? -3 : (i % 3 - 1) * 2.2));
-                    const kind = kinds[i % kinds.length];
-                    const color = colors[(i * 3) % colors.length];
-                    const el = document.createElement('div');
-                    el.className = 'traffic-car';
-                    el.innerHTML = `<div class="car-3d">${this.carShapeSvg(kind, 't' + i, color)}</div>`;
-                    this.applyCarScale(el, 'traffic');
-                    const marker = new maplibregl.Marker({
-                        element: el,
-                        anchor: 'center',
-                        pitchAlignment: 'map',
-                        rotationAlignment: 'map'
-                    }).setLngLat([this.currentPos[1], this.currentPos[0]]).addTo(this.glMap);
-                    this.trafficCars.push({ ahead, lane, mps, oncoming, marker, el });
-                }
             }
 
-            tickTrafficCars(dt) {
-                if (!this.glMap || !this.isNavigating || !this.trafficCars.length || !this.routeCoords.length) return;
-                const playerMps = Math.max(2, (this.speed || 36) / 3.6);
-                const span = this._routeLenM || Math.max(50, this.routeLengthMeters() - 28);
-                const size = this.carPixelSize('traffic');
-                const pitch = this.glMap.getPitch();
-                const tilt = Math.max(8, Math.min(28, 8 + pitch * 0.28));
-                for (let i = 0; i < this.trafficCars.length; i++) {
-                    const c = this.trafficCars[i];
-                    if (c.oncoming) c.ahead -= (c.mps + playerMps) * dt;
-                    else c.ahead += (c.mps - playerMps) * dt;
-                    if (c.ahead < 16) c.ahead = span - 10;
-                    if (c.ahead > span) c.ahead = 18;
-                    const p = this.pointAlongRoute(c.ahead);
-                    if (!p) continue;
-                    // Travel bearing along the route, then face travel direction.
-                    const look = this.pointAlongRoute(c.ahead + 6) || p;
-                    let brg = this.bearingBetween(p, look);
-                    if (c.oncoming) brg = (brg + 180) % 360;
-                    // Right-side offset relative to route forward (+90 = right).
-                    const pos = this.offsetByMeters(p, this.bearingBetween(p, look) + 90, c.lane);
-                    c.marker.setLngLat([pos[1], pos[0]]);
-                    c.marker.setRotation(brg);
-                    if (c.el) {
-                        c.el.style.width = size.w + 'px';
-                        c.el.style.height = size.h + 'px';
-                        const inner = c.el.querySelector('.car-3d');
-                        if (inner) inner.style.setProperty('--car-tilt', tilt.toFixed(1) + 'deg');
-                    }
-                }
+            tickTrafficCars(_dt) {
+                // Moving traffic cars disabled.
             }
 
             carCatalog(ns = 'c') {
@@ -4153,6 +4844,26 @@
                 };
                 fill(document.getElementById('carMiniPicker'), ['m3', 'my', 'ms', 'mx']);
                 fill(document.getElementById('carPicker'), Object.keys(catalog));
+                this.syncCarSizeButtons();
+                document.querySelectorAll('[data-car-size]').forEach((btn) => {
+                    btn.onclick = () => this.setCarSize(btn.dataset.carSize);
+                });
+            }
+
+            syncCarSizeButtons() {
+                document.querySelectorAll('[data-car-size]').forEach((btn) => {
+                    btn.classList.toggle('active', btn.dataset.carSize === this.carSize);
+                });
+            }
+
+            setCarSize(id) {
+                if (!['s', 'm', 'l', 'xl'].includes(id)) return;
+                this.carSize = id;
+                try { localStorage.setItem('tesla_car_size', id); } catch (_) {}
+                this.syncCarSizeButtons();
+                this.applyCarIcon();
+                const labels = { s: 'Small', m: 'Medium', l: 'Large', xl: 'XL' };
+                this.notify('📐 Car size: ' + (labels[id] || id), 'info');
             }
 
             setCarStyle(id) {
@@ -4171,16 +4882,27 @@
                 this.syncHudCar();
                 this.syncGlCar();
                 if (!this.userMarker) return;
+                const size = this.carPixelSize('player');
+                const w = Math.max(40, Math.min(120, Math.round(size.w * 0.55)));
+                const h = Math.max(56, Math.min(160, Math.round(size.h * 0.55)));
                 const root = this.userMarker.getElement();
                 const cursor = root && root.querySelector('.user-cursor');
                 if (cursor) {
                     cursor.innerHTML = this.teslaCarHtml();
                     cursor.className = 'user-cursor car-' + this.carStyle;
+                    cursor.style.width = w + 'px';
+                    cursor.style.height = h + 'px';
+                    this.userMarker.setIcon(L.divIcon({
+                        html: `<div class="user-cursor car-${this.carStyle}" style="width:${w}px;height:${h}px">${this.teslaCarHtml()}</div>`,
+                        iconSize: [w, h],
+                        iconAnchor: [Math.round(w / 2), Math.round(h * 0.65)],
+                        className: 'user-cursor-marker'
+                    }));
                 } else {
                     this.userMarker.setIcon(L.divIcon({
-                        html: `<div class="user-cursor car-${this.carStyle}">${this.teslaCarHtml()}</div>`,
-                        iconSize: [56, 80],
-                        iconAnchor: [28, 52],
+                        html: `<div class="user-cursor car-${this.carStyle}" style="width:${w}px;height:${h}px">${this.teslaCarHtml()}</div>`,
+                        iconSize: [w, h],
+                        iconAnchor: [Math.round(w / 2), Math.round(h * 0.65)],
                         className: 'user-cursor-marker'
                     }));
                 }
