@@ -5643,6 +5643,7 @@
                 const viaEl = document.getElementById('simViaInput');
                 if (viaEl) viaEl.value = '';
                 this.persistSimRouteFields();
+                this.refreshSpeedCameras(true);
                 this.notify('📍 Demo: Republic Square → Cascade', 'info');
                 await this.createRoute(start, end);
             }
