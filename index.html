@@ -39,7 +39,127 @@
         }
         .logo { font-size: 16px; font-weight: 600; letter-spacing: 1px; }
         .status { font-size: 11px; color: var(--tesla-text-dim); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .speed { font-size: 28px; font-weight: 700; color: var(--tesla-blue); margin-right: 12px; }
+        .speed { font-size: 28px; font-weight: 700; color: var(--tesla-blue); margin-right: 8px; }
+        .speed.over { color: #ff5252; }
+        .speed-limit-badge {
+            display: none;
+            width: 34px;
+            height: 34px;
+            margin-right: 10px;
+            border-radius: 50%;
+            border: 3px solid #e31937;
+            background: #fff;
+            color: #111;
+            font-size: 13px;
+            font-weight: 800;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .speed-limit-badge.visible { display: inline-flex; }
+        .speed-limit-badge.warn {
+            animation: camPulse 1s ease-in-out infinite;
+            box-shadow: 0 0 0 2px rgba(227, 25, 55, 0.35);
+        }
+        @keyframes camPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+        .cam-alert {
+            position: fixed;
+            top: 58px;
+            left: 12px;
+            z-index: 2100;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            max-width: min(52vw, 260px);
+            padding: 8px 12px;
+            border-radius: 12px;
+            background: rgba(26, 26, 26, 0.92);
+            border: 1px solid #ff9800;
+            color: #ffcc80;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+        }
+        .cam-alert.visible { display: flex; }
+        .cam-alert.danger {
+            border-color: #e31937;
+            color: #ff8a80;
+        }
+        .cam-alert .cam-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 3px solid #e31937;
+            background: #fff;
+            color: #111;
+            font-size: 12px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .cam-alert .cam-meta { min-width: 0; }
+        .cam-alert .cam-title {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+        .cam-alert .cam-dist {
+            font-size: 11px;
+            color: var(--tesla-text-dim);
+            white-space: nowrap;
+        }
+        .speed-cam-marker {
+            background: transparent !important;
+            border: none !important;
+        }
+        .speed-cam {
+            width: 34px;
+            height: 42px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
+            pointer-events: none;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45));
+        }
+        .speed-cam .cam-lens {
+            width: 18px;
+            height: 14px;
+            border-radius: 3px;
+            background: #1a1a1a;
+            border: 1px solid #888;
+            position: relative;
+        }
+        .speed-cam .cam-lens::after {
+            content: '';
+            position: absolute;
+            inset: 3px;
+            border-radius: 50%;
+            background: #3e6ae1;
+            box-shadow: inset 0 0 0 1px #9ec0ff;
+        }
+        .speed-cam .cam-limit {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 3px solid #e31937;
+            background: #fff;
+            color: #111;
+            font-size: 11px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        .speed-cam.unknown .cam-limit { font-size: 14px; }
         .data-badge {
             position: absolute;
             top: 8px;
@@ -1122,8 +1242,16 @@
         <div class="logo" id="logoBtn">🚗 TESLA</div>
         <div class="data-badge">🧭 COMPASS NAV</div>
         <div style="display: flex; align-items: center;">
+            <span id="speedLimitBadge" class="speed-limit-badge" title="Speed limit">--</span>
             <span id="speed" class="speed">0</span>
             <span id="location" class="status">Getting GPS...</span>
+        </div>
+    </div>
+    <div id="camAlert" class="cam-alert" aria-live="polite">
+        <div class="cam-icon" id="camAlertLimit">📷</div>
+        <div class="cam-meta">
+            <div class="cam-title" id="camAlertTitle">Speed camera</div>
+            <div class="cam-dist" id="camAlertDist">--</div>
         </div>
     </div>
     <div class="map-stage" id="mapStage">
@@ -1269,6 +1397,14 @@
                     <button type="button" class="traffic-btn" data-traffic="off">Off</button>
                     <button type="button" class="traffic-btn active" data-traffic="yandex" id="trafficProviderBtn">Yandex</button>
                     <span class="traffic-live" id="trafficLive">live</span>
+                </div>
+            </div>
+            <div class="traffic-toggle">
+                <span class="traffic-label">📷 Cams:</span>
+                <div class="traffic-buttons">
+                    <button type="button" class="traffic-btn" data-cams="off">Off</button>
+                    <button type="button" class="traffic-btn active" data-cams="on" id="speedCamBtn">On</button>
+                    <span class="traffic-live" id="speedCamLive">OSM</span>
                 </div>
             </div>
             
@@ -1448,6 +1584,24 @@
                     const savedT = localStorage.getItem('tesla_yandex_traffic');
                     if (savedT === '0') this.yandexTraffic = false;
                 } catch (_) {}
+                this.speedCamsEnabled = true;
+                this.speedCameras = [];
+                this.speedCamLayer = null;
+                this.glSpeedCams = [];
+                this._speedCamFetchAt = 0;
+                this._speedCamFetchPos = null;
+                this._speedCamFetching = false;
+                this._camAlertId = null;
+                this._camAlerted = {};
+                this.overpassUrls = [
+                    'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+                    'https://overpass.kumi.systems/api/interpreter',
+                    'https://overpass.osm.ch/api/interpreter'
+                ];
+                try {
+                    const savedCam = localStorage.getItem('tesla_speed_cams');
+                    if (savedCam === '0') this.speedCamsEnabled = false;
+                } catch (_) {}
                 this.baseDuration = 0;
                 this.searchMode = 'yandex';
                 this._suggest = { from: [], to: [] };
@@ -1556,6 +1710,8 @@
                 this.restoreDeveloperMode();
                 this.registerTileCache();
                 this.startYandexTraffic();
+                this.syncSpeedCamButtons();
+                this.refreshSpeedCameras(true);
                 this.notify('Ready! 🚗', 'success');
             }
             
@@ -1872,7 +2028,7 @@
             syncTrafficButtons() {
                 const providerBtn = document.getElementById('trafficProviderBtn');
                 if (providerBtn) providerBtn.textContent = this.useCanadaGoogle() ? 'Google' : 'Yandex';
-                document.querySelectorAll('.traffic-btn').forEach((b) => {
+                document.querySelectorAll('[data-traffic]').forEach((b) => {
                     b.classList.toggle('active', this.yandexTraffic ? b.dataset.traffic === 'yandex' : b.dataset.traffic === 'off');
                 });
                 this.updateTrafficLive();
@@ -1903,6 +2059,272 @@
                 el.textContent = this._yaLevel + '/10';
                 if (this._yaLevel >= 7) el.classList.add('bad');
                 else if (this._yaLevel >= 4) el.classList.add('warn');
+            }
+
+            syncSpeedCamButtons() {
+                document.querySelectorAll('[data-cams]').forEach((b) => {
+                    b.classList.toggle('active', this.speedCamsEnabled ? b.dataset.cams === 'on' : b.dataset.cams === 'off');
+                });
+                const live = document.getElementById('speedCamLive');
+                if (live) {
+                    live.textContent = this.speedCamsEnabled
+                        ? (this.speedCameras.length ? String(this.speedCameras.length) : 'OSM')
+                        : '';
+                }
+            }
+
+            setSpeedCamsEnabled(on) {
+                this.speedCamsEnabled = !!on;
+                try { localStorage.setItem('tesla_speed_cams', on ? '1' : '0'); } catch (_) {}
+                this.syncSpeedCamButtons();
+                if (!on) {
+                    this.clearSpeedCamMarkers();
+                    this.hideCamAlert();
+                    this.notify('Speed cameras off', 'info');
+                    return;
+                }
+                this.refreshSpeedCameras(true);
+                this.notify('📷 Speed cameras on (OpenStreetMap)', 'success');
+            }
+
+            parseMaxspeed(raw) {
+                if (raw == null || raw === '') return null;
+                const m = String(raw).match(/(\d+(?:\.\d+)?)/);
+                if (!m) return null;
+                const n = Math.round(parseFloat(m[1]));
+                return n > 0 && n < 250 ? n : null;
+            }
+
+            parseDirectionList(raw) {
+                if (raw == null || raw === '') return [];
+                return String(raw).split(/[;,]/).map((p) => {
+                    const t = p.trim().toLowerCase();
+                    if (!t) return null;
+                    if (/^\d+(\.\d+)?$/.test(t)) return ((parseFloat(t) % 360) + 360) % 360;
+                    const card = { n: 0, ne: 45, e: 90, se: 135, s: 180, sw: 225, w: 270, nw: 315 };
+                    return card[t] != null ? card[t] : null;
+                }).filter((v) => v != null);
+            }
+
+            headingMatchesCamera(heading, directions) {
+                if (!directions || !directions.length) return true;
+                if (heading == null || isNaN(heading)) return true;
+                const h = ((heading % 360) + 360) % 360;
+                return directions.some((d) => {
+                    let diff = Math.abs(h - d) % 360;
+                    if (diff > 180) diff = 360 - diff;
+                    return diff <= 70;
+                });
+            }
+
+            speedCamHtml(cam) {
+                const limit = cam.maxspeed;
+                const unknown = limit == null;
+                return `<div class="speed-cam${unknown ? ' unknown' : ''}" title="Speed camera${limit != null ? ' · ' + limit + ' km/h' : ''}">
+                    <div class="cam-lens"></div>
+                    <div class="cam-limit">${unknown ? '📷' : limit}</div>
+                </div>`;
+            }
+
+            clearSpeedCamMarkers() {
+                if (this.speedCamLayer && this.map) {
+                    try { this.map.removeLayer(this.speedCamLayer); } catch (_) {}
+                }
+                this.speedCamLayer = null;
+                (this.glSpeedCams || []).forEach((m) => {
+                    try { m.remove(); } catch (_) {}
+                });
+                this.glSpeedCams = [];
+            }
+
+            renderSpeedCamMarkers() {
+                this.clearSpeedCamMarkers();
+                if (!this.speedCamsEnabled || !this.speedCameras.length) return;
+
+                if (this.map) {
+                    this.speedCamLayer = L.layerGroup();
+                    this.speedCameras.forEach((cam) => {
+                        const marker = L.marker([cam.lat, cam.lon], {
+                            icon: L.divIcon({
+                                html: this.speedCamHtml(cam),
+                                className: 'speed-cam-marker',
+                                iconSize: [34, 42],
+                                iconAnchor: [17, 36]
+                            }),
+                            interactive: false,
+                            keyboard: false
+                        });
+                        this.speedCamLayer.addLayer(marker);
+                    });
+                    this.speedCamLayer.addTo(this.map);
+                }
+
+                const stage = document.getElementById('mapStage');
+                if (stage && stage.classList.contains('drive-gl') && this.glMap && typeof maplibregl !== 'undefined') {
+                    this.speedCameras.forEach((cam) => {
+                        const el = document.createElement('div');
+                        el.innerHTML = this.speedCamHtml(cam);
+                        el.style.cssText = 'pointer-events:none;';
+                        const m = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+                            .setLngLat([cam.lon, cam.lat])
+                            .addTo(this.glMap);
+                        this.glSpeedCams.push(m);
+                    });
+                }
+            }
+
+            syncGlSpeedCams() {
+                if (!this.speedCamsEnabled) {
+                    (this.glSpeedCams || []).forEach((m) => { try { m.remove(); } catch (_) {} });
+                    this.glSpeedCams = [];
+                    return;
+                }
+                this.renderSpeedCamMarkers();
+            }
+
+            async refreshSpeedCameras(force = false) {
+                if (!this.speedCamsEnabled || !this.currentPos) return;
+                const now = Date.now();
+                const movedKm = this._speedCamFetchPos
+                    ? this.calculateDistance(this._speedCamFetchPos, this.currentPos)
+                    : 999;
+                if (!force && this._speedCamFetching) return;
+                if (!force && this._speedCamFetchAt && now - this._speedCamFetchAt < 90000 && movedKm < 3.5) return;
+
+                this._speedCamFetching = true;
+                this._speedCamFetchAt = now;
+                this._speedCamFetchPos = [...this.currentPos];
+                const lat = this.currentPos[0];
+                const lon = this.currentPos[1];
+                const radius = 15000;
+                const query = `[out:json][timeout:25];
+node["highway"="speed_camera"](around:${radius},${lat},${lon});
+out body;`;
+
+                let loaded = false;
+                for (const url of this.overpassUrls) {
+                    try {
+                        const ctrl = new AbortController();
+                        const timer = setTimeout(() => ctrl.abort(), 18000);
+                        const res = await fetch(url, {
+                            method: 'POST',
+                            body: 'data=' + encodeURIComponent(query),
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            signal: ctrl.signal
+                        });
+                        clearTimeout(timer);
+                        if (!res.ok) continue;
+                        const data = await res.json();
+                        const cams = (data.elements || [])
+                            .filter((e) => e.type === 'node' && e.lat != null && e.lon != null)
+                            .map((e) => ({
+                                id: String(e.id),
+                                lat: e.lat,
+                                lon: e.lon,
+                                maxspeed: this.parseMaxspeed(e.tags && e.tags.maxspeed),
+                                directions: this.parseDirectionList(e.tags && e.tags.direction)
+                            }));
+                        this.speedCameras = cams;
+                        loaded = true;
+                        break;
+                    } catch (_) { /* try next mirror */ }
+                }
+                this._speedCamFetching = false;
+                if (!loaded) {
+                    const live = document.getElementById('speedCamLive');
+                    if (live && this.speedCamsEnabled) {
+                        live.textContent = 'retry';
+                        live.classList.add('warn');
+                    }
+                    return;
+                }
+                const live = document.getElementById('speedCamLive');
+                if (live) live.classList.remove('warn');
+                this.syncSpeedCamButtons();
+                this.renderSpeedCamMarkers();
+                this.updateCameraAlerts();
+            }
+
+            hideCamAlert() {
+                this._camAlertId = null;
+                const el = document.getElementById('camAlert');
+                if (el) el.classList.remove('visible', 'danger');
+                const badge = document.getElementById('speedLimitBadge');
+                if (badge) badge.classList.remove('visible', 'warn');
+                const speedEl = document.getElementById('speed');
+                if (speedEl) speedEl.classList.remove('over');
+            }
+
+            formatCamDistance(meters) {
+                if (meters < 1000) return Math.round(meters) + ' m';
+                return (meters / 1000).toFixed(1) + ' km';
+            }
+
+            nearestApproachCamera() {
+                if (!this.speedCamsEnabled || !this.currentPos || !this.speedCameras.length) return null;
+                const heading = this.heading;
+                let best = null;
+                for (const cam of this.speedCameras) {
+                    const distM = this.calculateDistance(this.currentPos, [cam.lat, cam.lon]) * 1000;
+                    if (distM > 900) continue;
+                    if (!this.headingMatchesCamera(heading, cam.directions)) continue;
+                    // Prefer cameras roughly ahead of travel direction.
+                    const brg = this.bearingBetween(this.currentPos, [cam.lat, cam.lon]);
+                    let ahead = 0;
+                    if (heading != null && !isNaN(heading) && brg != null) {
+                        let diff = Math.abs(heading - brg) % 360;
+                        if (diff > 180) diff = 360 - diff;
+                        if (diff > 95 && distM > 60) continue;
+                        ahead = diff;
+                    }
+                    const score = distM + ahead * 1.5;
+                    if (!best || score < best.score) best = { cam, distM, score };
+                }
+                return best;
+            }
+
+            updateCameraAlerts() {
+                if (!this.speedCamsEnabled || !this.currentPos) {
+                    this.hideCamAlert();
+                    return;
+                }
+                const hit = this.nearestApproachCamera();
+                const badge = document.getElementById('speedLimitBadge');
+                const speedEl = document.getElementById('speed');
+                const alert = document.getElementById('camAlert');
+                if (!hit) {
+                    this.hideCamAlert();
+                    return;
+                }
+                const { cam, distM } = hit;
+                const over = cam.maxspeed != null && this.speed > cam.maxspeed + 2;
+                if (badge) {
+                    badge.textContent = cam.maxspeed != null ? String(cam.maxspeed) : '📷';
+                    badge.classList.add('visible');
+                    badge.classList.toggle('warn', over || distM < 250);
+                }
+                if (speedEl) speedEl.classList.toggle('over', over);
+                if (alert) {
+                    alert.classList.add('visible');
+                    alert.classList.toggle('danger', over);
+                    const lim = document.getElementById('camAlertLimit');
+                    const title = document.getElementById('camAlertTitle');
+                    const dist = document.getElementById('camAlertDist');
+                    if (lim) lim.textContent = cam.maxspeed != null ? String(cam.maxspeed) : '📷';
+                    if (title) title.textContent = over ? 'Slow down — camera' : 'Speed camera ahead';
+                    if (dist) dist.textContent = this.formatCamDistance(distM)
+                        + (cam.maxspeed != null ? ' · limit ' + cam.maxspeed + ' km/h' : '');
+                }
+                if (this._camAlertId !== cam.id) {
+                    this._camAlertId = cam.id;
+                    const last = this._camAlerted[cam.id] || 0;
+                    if (Date.now() - last > 45000) {
+                        this._camAlerted[cam.id] = Date.now();
+                        if (over) this.notify('⚠️ Camera — slow to ' + cam.maxspeed + ' km/h', 'error');
+                        else this.notify('📷 Camera in ' + this.formatCamDistance(distM)
+                            + (cam.maxspeed != null ? ' · ' + cam.maxspeed + ' km/h' : ''), 'info');
+                    }
+                }
             }
 
             yandexRegionId(lat, lon) {
@@ -2335,6 +2757,7 @@
                     this.polishDriveMap();
                     this.syncGlRoute();
                     if (this.yandexTraffic) this.syncGlTraffic(true);
+                    this.syncGlSpeedCams();
                 });
             }
 
@@ -3122,11 +3545,13 @@
                     this.syncGlRoute();
                     this.syncGlCar();
                     this.seedTrafficCars(true);
+                    this.syncGlSpeedCams();
                     this.startDriveCam();
                 } else {
                     this.stopDriveCam();
                     this.clearTrafficCars();
                     this.applyYandexTrafficLayer();
+                    this.renderSpeedCamMarkers();
                 }
                 const kick = () => {
                     if (this.glMap) this.glMap.resize();
@@ -3332,6 +3757,9 @@
                     this.speed = kmh;
                     document.getElementById('speed').textContent = kmh;
                 }
+
+                this.refreshSpeedCameras(false);
+                this.updateCameraAlerts();
                 
                 // Always face the route you should drive — never the phone compass.
                 if (this.isNavigating) {
@@ -3594,8 +4022,11 @@
                     btn.onclick = () => this.setRouteLineShape(btn.dataset.routeShape);
                 });
                 
-                document.querySelectorAll('.traffic-btn').forEach(btn => {
+                document.querySelectorAll('[data-traffic]').forEach(btn => {
                     btn.onclick = () => this.setYandexTraffic(btn.dataset.traffic === 'yandex');
+                });
+                document.querySelectorAll('[data-cams]').forEach(btn => {
+                    btn.onclick = () => this.setSpeedCamsEnabled(btn.dataset.cams === 'on');
                 });
                 
                 document.getElementById('goBtn').onclick = () => this.calculateRoute();
@@ -4449,6 +4880,8 @@
                 this.setDrive3D(true);
                 this.trimPassedRoute();
                 this.applyDriveView(true);
+                this.refreshSpeedCameras(true);
+                this.updateCameraAlerts();
                 
                 this.updateNavigationInfo();
                 this.updateDriveProgress();
@@ -4477,6 +4910,7 @@
                 document.getElementById('compassBtn').classList.remove('active');
                 this.setDrive3D(false);
                 this.clearTrafficCars();
+                this.hideCamAlert();
                 this.resetToNorth();
                 
                 if (this.remainingLine && this.routeCoords.length) {
