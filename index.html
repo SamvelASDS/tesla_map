@@ -1591,8 +1591,10 @@
                 this._speedCamFetchAt = 0;
                 this._speedCamFetchPos = null;
                 this._speedCamFetching = false;
+                this._speedCamLoaded = false;
                 this._camAlertId = null;
                 this._camAlerted = {};
+                this.yerevanSpeedCamSeed = [[130041119,40.163718,44.41869,0,"120"],[287885925,40.15821,44.540494,70,"0"],[287885928,40.155252,44.540842,60,""],[287892373,40.125662,44.493373,60,"90;270"],[288952205,40.233527,44.549567,80,"63"],[288954082,40.211867,44.562011,60,"200"],[292949553,40.15636,44.473168,60,"290"],[331497966,40.211578,44.538561,60,"140;320"],[354434145,40.183228,44.480741,60,"140"],[597102785,40.222897,44.454386,80,"130"],[597695089,40.163638,44.418614,0,"300"],[611406096,40.168423,44.525793,40,"45;235"],[632025891,40.181886,44.524064,60,"190;9"],[635463443,40.212484,44.562118,60,"20"],[703653339,40.19966,44.5073,60,""],[703653350,40.194435,44.517802,60,"95"],[983124830,40.243431,44.576066,0,"237"],[983124868,40.246614,44.582074,60,"55"],[983124944,40.246294,44.581761,60,"235"],[986406475,40.144112,44.32705,50,""],[1141147399,40.222842,44.454243,60,"310"],[1342686376,40.19646,44.517037,60,"35"],[1421784993,40.332921,44.368188,60,"15;195"],[1495549465,40.223433,44.559961,70,"335"],[1565977605,40.195204,44.538975,60,"105"],[1775782153,40.208309,44.494396,60,"323"],[1827774633,40.165272,44.338398,50,""],[1890073921,40.289866,44.609645,90,"208"],[1902258450,40.165476,44.3352,60,"90"],[1965740475,40.209705,44.534502,60,"145;325"],[1972401132,40.157454,44.461372,0,"250"],[1972401134,40.157548,44.461288,0,"70"],[1972936528,40.312656,44.577212,60,"15;200"],[1973140981,40.30926,44.575532,60,"20;195"],[1980753488,40.197904,44.511229,60,""],[2004508489,40.181028,44.459875,60,"15"],[2004508697,40.189553,44.475939,60,"143"],[2004508885,40.198717,44.462205,60,""],[2178857499,40.28112,44.625037,60,"205"],[2219510105,40.202031,44.582039,0,"155;335"],[2240175285,40.140557,44.510699,60,"5"],[2254360419,40.177067,44.528614,40,""],[2317707961,40.148475,44.470019,60,"65"],[2317707972,40.150292,44.473147,40,"45"],[2327075339,40.185336,44.502824,60,"227;47"],[2327176016,40.162369,44.44148,60,"337"],[2327176031,40.216032,44.555209,40,""],[2337651445,40.220312,44.531324,0,"0"],[2345485288,40.246765,44.425056,60,""],[2345485296,40.246794,44.425202,60,""],[2479786880,40.16121,44.294291,50,"172;350"],[2559590034,40.161007,44.424999,0,"120"],[2559590035,40.165052,44.363439,0,""],[2704382102,40.019768,44.489034,60,""],[2745881110,40.160621,44.425627,60,"300"],[2745881148,40.164923,44.36345,60,""],[2764889289,40.14523,44.510124,60,"347"],[2776273493,40.206123,44.506654,60,"60"],[2781170681,40.218318,44.49891,60,"50"],[2788521544,40.184201,44.626922,60,"110;290"],[2916445324,40.188904,44.527812,60,"40"],[2951366425,40.227406,44.549315,60,"35;215"],[2951369093,40.383077,44.65533,70,"30"],[2960584637,40.26093,44.609617,60,"55;235"],[2976955357,40.182859,44.562009,60,"10"],[2976959156,40.15799,44.449548,70,"105"],[3222853654,40.296269,44.2924,60,"90;270"],[3331413578,40.204644,44.564217,60,"158"],[3413163179,40.134286,44.500787,60,"345"],[3415474039,40.203349,44.530156,60,"127"],[3424399676,40.193086,44.485057,60,"235"],[3424399686,40.193514,44.489454,40,"117;297"],[3520247820,40.172887,44.493642,60,"235"],[3520247821,40.17298,44.493561,60,"55"],[3520247822,40.183409,44.52749,60,"167"],[3613297917,40.222983,44.575652,60,""],[3687717718,40.292149,44.367829,60,"60;240"],[3715913149,40.218774,44.496045,60,""],[3721912756,40.30284,44.618532,90,"30"],[3735729787,40.150358,44.506374,60,"90"],[3779181656,40.132791,44.485639,60,"50"],[3779188162,40.136406,44.473026,60,"135"],[3798200671,40.156475,44.47323,60,"110"],[3824317473,40.183203,44.480669,60,"330"],[3824493932,40.193153,44.48498,60,"55"],[3824493939,40.196882,44.491264,60,"50"],[3830337104,40.1828,44.509845,60,"42"],[3835488428,40.199807,44.493798,60,"21"],[3836963489,40.177549,44.522634,60,"205"],[3890241121,40.165378,44.33524,60,"270"],[3903814249,40.136552,44.462296,60,"225"],[3913253971,40.178243,44.480544,60,"335"],[3913379130,40.347117,44.380439,0,"25;205"],[3913387525,40.384695,44.379626,60,"173;353"],[3963323866,40.310663,44.472632,60,"10"],[3963323874,40.318596,44.485014,0,"43;223"],[3963348082,40.168015,44.546869,60,"35"],[4091260896,40.178275,44.48067,60,"155"],[4181036351,40.198736,44.462355,60,""],[4194771997,40.157847,44.511095,60,"195"],[4228153889,40.2002,44.464731,60,"93;273"],[4230885941,40.203247,44.530075,60,"307"],[4242357382,40.195994,44.547576,70,"230"],[4277726218,40.151948,44.516376,60,"5;185"],[4283672681,40.139816,44.517559,60,"5;185"],[4373250631,40.149795,44.474206,50,"60;240"],[4406579553,40.194057,44.524878,70,"257"],[4423444517,40.183283,44.515102,30,"224"],[4557113566,40.132273,44.48504,60,"230"],[4769915718,40.15787,44.502313,60,"205"],[4795517962,40.220496,44.578469,60,"90;270"],[4810928089,40.200742,44.479788,60,"185"],[4890340367,40.223487,44.560105,70,"155"],[4891351530,40.202724,44.555323,60,"40"],[4892324562,40.20459,44.56407,60,"335"],[4908459682,40.281162,44.624927,60,"25"],[4908971292,40.243688,44.576234,0,"55"],[4947171592,40.164682,44.462335,60,"290"],[4947171593,40.164538,44.463198,60,"110"],[4953562663,40.168565,44.438461,60,"157"],[4953562664,40.168493,44.438262,60,"337"],[5017653080,40.190969,44.465926,60,"85"],[5017653081,40.190871,44.466023,60,"265"],[5037605625,40.209575,44.493488,60,"147"],[5047465704,40.145252,44.510293,60,"170"],[5200073360,40.162462,44.473906,80,"60"],[5200073365,40.114852,44.477634,60,"215"],[5220006396,40.070828,44.440701,60,"35;215"],[5282135451,40.15999,44.402637,60,"40"],[5282135475,40.162655,44.390058,60,"95"],[5282135476,40.162551,44.390014,60,"275"],[5368815351,40.208957,44.465428,60,"270"],[5370659189,40.20345,44.46174,60,"175"],[5371065967,40.203598,44.461587,60,"355"],[5391027540,40.204114,44.508365,60,"60"],[5391027541,40.203973,44.508277,60,"244"],[5391066416,40.204325,44.515451,40,"90;270"],[5467304802,40.310638,44.472766,60,"193"],[5482777969,40.219453,44.476428,60,""],[5502010276,40.206274,44.529304,0,"135;315"],[5514692676,40.15779,44.511216,60,"15"],[5658920065,40.238414,44.564844,70,"55"],[5714605579,40.159956,44.402706,60,"220"],[5746658010,40.16253,44.474338,0,"240"],[5806060694,40.220306,44.531456,0,"180"],[5806134714,40.23344,44.549636,80,"243"],[5846967889,40.182578,44.562154,0,"190"],[6129431485,40.15802,44.502167,60,"20"],[6139214148,40.204893,44.555929,60,"235"],[6139214160,40.204972,44.555818,60,"55"],[6312979055,40.21839,44.499362,60,"230"],[6398054016,40.183388,44.527396,60,"343"],[6419284779,40.134882,44.528217,60,"55;235"],[6434511035,40.174613,44.449665,0,"85"],[6435498693,40.170281,44.446101,60,""],[6710232635,40.153826,44.65589,60,"105;285"],[6989144749,40.150249,44.506275,60,"270"],[7002939803,40.140552,44.510893,60,"185"],[7003093314,40.130786,44.509757,60,"0"],[7003093315,40.130668,44.509916,60,"180"],[7418703143,40.134302,44.500892,60,"165"],[7528211845,40.148344,44.469947,60,"245"],[7528363639,40.150193,44.473177,40,"225"],[7545029198,40.136609,44.472601,60,"315"],[7595364138,40.16796,44.546959,0,"215"],[7596234101,40.158205,44.54064,70,"180"],[8816510706,40.144328,44.533738,60,"18;198"],[8818078250,40.131561,44.533928,60,"40;220"],[8818078251,40.139197,44.536415,60,"330;150"],[8818078314,40.146243,44.515916,60,"5;185"],[8914183954,40.164071,44.408202,60,"80"],[8914183955,40.16399,44.408207,60,"260"],[8914197452,40.162209,44.395688,60,"80"],[8914197453,40.162094,44.393427,60,"280"],[8914270713,40.16562,44.25298,90,"75"],[8914270714,40.165154,44.250903,90,"255"],[9084319661,40.165381,44.338406,50,""],[9084334122,40.16488,44.361077,60,""],[9987489791,40.115047,44.477693,60,"34"],[11073600194,40.209025,44.465407,60,"90"],[11127595751,40.188799,44.51553,0,""],[11648951447,40.136614,44.46221,60,"45"],[12093265523,40.273046,44.599193,70,""]];
                 this.overpassUrls = [
                     'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
                     'https://overpass.kumi.systems/api/interpreter',
@@ -2066,11 +2068,22 @@
                     b.classList.toggle('active', this.speedCamsEnabled ? b.dataset.cams === 'on' : b.dataset.cams === 'off');
                 });
                 const live = document.getElementById('speedCamLive');
-                if (live) {
-                    live.textContent = this.speedCamsEnabled
-                        ? (this.speedCameras.length ? String(this.speedCameras.length) : 'OSM')
-                        : '';
+                if (!live) return;
+                live.classList.remove('warn', 'bad');
+                if (!this.speedCamsEnabled) {
+                    live.textContent = '';
+                    return;
                 }
+                if (this._speedCamFetching) {
+                    live.textContent = '…';
+                    return;
+                }
+                if (this._speedCamLoaded) {
+                    live.textContent = String(this.speedCameras.length);
+                    if (!this.speedCameras.length) live.classList.add('warn');
+                    return;
+                }
+                live.textContent = 'OSM';
             }
 
             setSpeedCamsEnabled(on) {
@@ -2085,6 +2098,124 @@
                 }
                 this.refreshSpeedCameras(true);
                 this.notify('📷 Speed cameras on (OpenStreetMap)', 'success');
+            }
+
+            nearYerevan(lat, lon) {
+                if (lat == null || lon == null) return false;
+                return lat >= 39.9 && lat <= 40.45 && lon >= 44.2 && lon <= 44.85;
+            }
+
+            camerasFromSeed(lat, lon, radiusKm = 18) {
+                const seed = this.yerevanSpeedCamSeed || [];
+                const out = [];
+                for (let i = 0; i < seed.length; i++) {
+                    const row = seed[i];
+                    const clat = row[1], clon = row[2];
+                    if (this.calculateDistance([lat, lon], [clat, clon]) > radiusKm) continue;
+                    out.push({
+                        id: 'seed-' + row[0],
+                        lat: clat,
+                        lon: clon,
+                        maxspeed: row[3] > 0 ? row[3] : null,
+                        directions: this.parseDirectionList(row[4])
+                    });
+                }
+                return out;
+            }
+
+            applySpeedCameraList(cams, source) {
+                this.speedCameras = cams || [];
+                this._speedCamLoaded = true;
+                this._speedCamSource = source || 'osm';
+                this.syncSpeedCamButtons();
+                this.renderSpeedCamMarkers();
+                this.updateCameraAlerts();
+            }
+
+            async refreshSpeedCameras(force = false) {
+                if (!this.speedCamsEnabled || !this.currentPos) return;
+                const now = Date.now();
+                const movedKm = this._speedCamFetchPos
+                    ? this.calculateDistance(this._speedCamFetchPos, this.currentPos)
+                    : 999;
+                if (!force && this._speedCamFetching) return;
+                if (!force && this._speedCamFetchAt && now - this._speedCamFetchAt < 90000 && movedKm < 3.5) return;
+
+                this._speedCamFetching = true;
+                this.syncSpeedCamButtons();
+                this._speedCamFetchAt = now;
+                this._speedCamFetchPos = [...this.currentPos];
+                const lat = this.currentPos[0];
+                const lon = this.currentPos[1];
+
+                // Instant markers for Greater Yerevan while Overpass loads.
+                if (this.nearYerevan(lat, lon) && !this.speedCameras.length) {
+                    const seeded = this.camerasFromSeed(lat, lon, 22);
+                    if (seeded.length) this.applySpeedCameraList(seeded, 'seed');
+                }
+
+                const radius = 15000;
+                const query = `[out:json][timeout:25];node["highway"="speed_camera"](around:${radius},${lat},${lon});out body;`;
+
+                let cams = null;
+                for (const url of this.overpassUrls) {
+                    try {
+                        const ctrl = new AbortController();
+                        const timer = setTimeout(() => ctrl.abort(), 22000);
+                        let res = await fetch(url, {
+                            method: 'POST',
+                            body: 'data=' + encodeURIComponent(query),
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            signal: ctrl.signal
+                        });
+                        if (!res.ok) {
+                            res = await fetch(url + '?data=' + encodeURIComponent(query), {
+                                method: 'GET',
+                                signal: ctrl.signal
+                            });
+                        }
+                        clearTimeout(timer);
+                        if (!res.ok) continue;
+                        const data = await res.json();
+                        cams = (data.elements || [])
+                            .filter((e) => e.type === 'node' && e.lat != null && e.lon != null)
+                            .map((e) => ({
+                                id: String(e.id),
+                                lat: e.lat,
+                                lon: e.lon,
+                                maxspeed: this.parseMaxspeed(e.tags && e.tags.maxspeed),
+                                directions: this.parseDirectionList(e.tags && e.tags.direction)
+                            }));
+                        break;
+                    } catch (_) { /* try next mirror */ }
+                }
+                this._speedCamFetching = false;
+
+                if (cams && cams.length) {
+                    this.applySpeedCameraList(cams, 'osm');
+                    return;
+                }
+
+                // Offline / flaky Overpass: use bundled Greater-Yerevan cameras.
+                if (this.nearYerevan(lat, lon)) {
+                    const seeded = this.camerasFromSeed(lat, lon, 22);
+                    if (seeded.length) {
+                        this.applySpeedCameraList(seeded, 'seed');
+                        return;
+                    }
+                }
+
+                if (cams) {
+                    this.applySpeedCameraList(cams, 'osm');
+                    return;
+                }
+
+                const live = document.getElementById('speedCamLive');
+                if (live && this.speedCamsEnabled) {
+                    live.textContent = 'retry';
+                    live.classList.add('warn');
+                }
+                this._speedCamLoaded = false;
             }
 
             parseMaxspeed(raw) {
@@ -2180,69 +2311,6 @@
                     return;
                 }
                 this.renderSpeedCamMarkers();
-            }
-
-            async refreshSpeedCameras(force = false) {
-                if (!this.speedCamsEnabled || !this.currentPos) return;
-                const now = Date.now();
-                const movedKm = this._speedCamFetchPos
-                    ? this.calculateDistance(this._speedCamFetchPos, this.currentPos)
-                    : 999;
-                if (!force && this._speedCamFetching) return;
-                if (!force && this._speedCamFetchAt && now - this._speedCamFetchAt < 90000 && movedKm < 3.5) return;
-
-                this._speedCamFetching = true;
-                this._speedCamFetchAt = now;
-                this._speedCamFetchPos = [...this.currentPos];
-                const lat = this.currentPos[0];
-                const lon = this.currentPos[1];
-                const radius = 15000;
-                const query = `[out:json][timeout:25];
-node["highway"="speed_camera"](around:${radius},${lat},${lon});
-out body;`;
-
-                let loaded = false;
-                for (const url of this.overpassUrls) {
-                    try {
-                        const ctrl = new AbortController();
-                        const timer = setTimeout(() => ctrl.abort(), 18000);
-                        const res = await fetch(url, {
-                            method: 'POST',
-                            body: 'data=' + encodeURIComponent(query),
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            signal: ctrl.signal
-                        });
-                        clearTimeout(timer);
-                        if (!res.ok) continue;
-                        const data = await res.json();
-                        const cams = (data.elements || [])
-                            .filter((e) => e.type === 'node' && e.lat != null && e.lon != null)
-                            .map((e) => ({
-                                id: String(e.id),
-                                lat: e.lat,
-                                lon: e.lon,
-                                maxspeed: this.parseMaxspeed(e.tags && e.tags.maxspeed),
-                                directions: this.parseDirectionList(e.tags && e.tags.direction)
-                            }));
-                        this.speedCameras = cams;
-                        loaded = true;
-                        break;
-                    } catch (_) { /* try next mirror */ }
-                }
-                this._speedCamFetching = false;
-                if (!loaded) {
-                    const live = document.getElementById('speedCamLive');
-                    if (live && this.speedCamsEnabled) {
-                        live.textContent = 'retry';
-                        live.classList.add('warn');
-                    }
-                    return;
-                }
-                const live = document.getElementById('speedCamLive');
-                if (live) live.classList.remove('warn');
-                this.syncSpeedCamButtons();
-                this.renderSpeedCamMarkers();
-                this.updateCameraAlerts();
             }
 
             hideCamAlert() {
@@ -2730,6 +2798,7 @@ out body;`;
                     this.polishDriveMap();
                     this.syncGlRoute();
                     this.syncHudCar();
+                    this.syncGlSpeedCams();
                     this.cacheDrivePadding();
                     this.glMap.resize();
                 });
