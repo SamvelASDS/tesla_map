@@ -37,7 +37,7 @@
             z-index: 1000;
             position: relative;
         }
-        .logo { font-size: 16px; font-weight: 600; letter-spacing: 1px; }
+        .logo { font-size: 13px; font-weight: 600; letter-spacing: 1px; }
         .status { font-size: 11px; color: var(--tesla-text-dim); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .speed { font-size: 28px; font-weight: 700; color: var(--tesla-blue); margin-right: 12px; }
         .data-badge {
@@ -94,12 +94,30 @@
             inset: 0;
             z-index: 2;
             display: none;
-            background: #d9d5cc;
+            background: #f6f3ea;
         }
-        .map-stage.drive-gl .glmap { display: block; }
+        .map-stage.drive-gl .glmap,
+        .map-stage.plan-gl .glmap { display: block; }
         .map-stage.drive-gl .map-camera {
             display: none !important;
             visibility: hidden;
+        }
+        /* Planning preview: colored GL under Leaflet markers/routes */
+        .map-stage.plan-gl .glmap { z-index: 1; }
+        .map-stage.plan-gl .map-camera { z-index: 2; }
+        .map-stage.plan-gl #map,
+        .map-stage.plan-gl .leaflet-container {
+            background: transparent !important;
+        }
+        .map-stage.plan-gl .leaflet-tile-pane {
+            opacity: 0 !important;
+        }
+        .map-stage.plan-gl .leaflet-overlay-pane,
+        .map-stage.plan-gl .leaflet-marker-pane,
+        .map-stage.plan-gl .leaflet-shadow-pane,
+        .map-stage.plan-gl .leaflet-tooltip-pane,
+        .map-stage.plan-gl .leaflet-popup-pane {
+            opacity: 1 !important;
         }
         .hud-car {
             display: none;
@@ -117,6 +135,7 @@
         }
         .hud-car svg { width: 100%; height: 100%; display: block; overflow: visible; }
         .map-stage.drive-gl .hud-car { display: block; }
+        .map-stage.plan-gl .hud-car { display: none !important; }
         .traffic-car {
             width: 48px;
             height: 88px;
@@ -300,11 +319,39 @@
             max-width: 400px;
             overflow: visible;
         }
-        .control-panel.hidden-ui {
+        .control-panel.hidden-ui,
+        .control-panel.panel-hidden {
             opacity: 0;
             transform: translateX(-20px);
             pointer-events: none;
         }
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: var(--tesla-text-dim);
+            margin-bottom: 8px;
+        }
+        .panel-tab {
+            display: none;
+            position: fixed;
+            left: 12px;
+            top: 80px;
+            z-index: 1000;
+            border: 1px solid var(--tesla-light-gray);
+            background: rgba(26, 26, 26, 0.95);
+            color: var(--tesla-text);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+        }
+        .panel-tab.visible { display: block; }
         .places-panel {
             position: fixed;
             right: 12px;
@@ -653,19 +700,36 @@
             cursor: pointer;
         }
         
+        .action-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 6px;
+        }
+        .btn-search {
+            flex: 1;
+            background: var(--tesla-blue);
+            color: white;
+            border: none;
+            padding: 14px 12px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .btn-search:active { transform: scale(0.95); }
         .btn-go {
+            flex: 1;
             background: #4caf50;
             color: white;
             border: none;
-            padding: 14px 20px;
+            padding: 14px 12px;
             border-radius: 10px;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 700;
             cursor: pointer;
-            width: 100%;
-            margin-top: 6px;
         }
         .btn-go:active { transform: scale(0.95); }
+        .btn-go.hidden { display: none; }
         
         .button-group {
             display: flex; 
@@ -675,18 +739,6 @@
             border-radius: 10px; 
             border: 1px solid var(--tesla-light-gray);
             backdrop-filter: blur(10px);
-        }
-        .btn-start { 
-            background: #4caf50; 
-            color: var(--tesla-white); 
-            font-size: 18px; 
-            padding: 16px; 
-            width: 100%; 
-            margin-bottom: 6px; 
-            border: none; 
-            border-radius: 10px; 
-            cursor: pointer; 
-            font-weight: 700;
         }
         .btn { 
             flex: 1; 
@@ -1180,15 +1232,11 @@
     </div>
     
     <div class="control-panel" id="controlPanel">
-        <button id="startNavBtn" class="btn-start hidden">🚀 START NAVIGATION</button>
-        
         <div class="search-container">
-            <div class="search-mode">
-                <button class="mode-btn" data-mode="osm">OpenStreetMap</button>
-                <button class="mode-btn active" data-mode="yandex">Yandex 🇦🇲</button>
-                <button class="mode-btn" data-mode="google">Google 🇨🇦</button>
+            <div class="panel-head">
+                <span>ROUTE</span>
+                <button type="button" class="places-hide-btn" id="panelHideBtn" title="Minimize">–</button>
             </div>
-            
             <div class="input-row-wrap" data-suggest-for="from">
                 <div class="input-row">
                     <span class="input-icon">🔵</span>
@@ -1207,25 +1255,12 @@
             <div class="traffic-toggle">
                 <span class="traffic-label">🎨 Map:</span>
                 <div class="traffic-buttons" id="mapStyleBtns">
-                    <button class="style-btn active" data-style="voyager" title="Carto Voyager · fast, reliable">Voyager</button>
-                    <button class="style-btn" data-style="light" title="Carto Light · fastest, least data">Light</button>
+                    <button class="style-btn active" data-style="drive" title="Soft cream map · yellow buildings · green parks">Drive</button>
                     <button class="style-btn" data-style="osm" title="OpenStreetMap · classic, reliable">OSM</button>
-                    <button class="style-btn" data-style="google" title="Google streets · most realistic">Google</button>
-                    <button class="style-btn" data-style="vector" title="OpenFreeMap vector · sharp but slower">Vector</button>
+                    <button class="style-btn" data-style="vector" title="OpenFreeMap Liberty · 3D buildings, heavier">Vector</button>
                     <button class="style-btn" data-style="sat" title="Satellite + labels · no 3D">Sat</button>
-                    <button class="style-btn" data-style="night" title="Dark night map · fast">Night</button>
-                    <button class="style-btn" data-style="esri" title="Esri streets · may show missing data">Esri</button>
                 </div>
-                <div class="style-hint" id="mapStyleHint">Voyager — colored streets, fast load (good default for car)</div>
-            </div>
-            
-            <div class="traffic-toggle">
-                <span class="traffic-label">🗺️ Load:</span>
-                <div class="traffic-buttons">
-                    <button class="quality-btn" data-quality="low" title="Least data">Low</button>
-                    <button class="quality-btn active" data-quality="med" title="Fast + clear · best for driving">Med</button>
-                    <button class="quality-btn" data-quality="high" title="Extra tiles ahead">High</button>
-                </div>
+                <div class="style-hint" id="mapStyleHint">Drive — soft cream map, yellow buildings, green parks</div>
             </div>
             
             <div class="traffic-toggle">
@@ -1239,29 +1274,6 @@
                     <button type="button" class="route-swatch" data-route-color="orange" style="background:#ff9800" title="Orange"></button>
                 </div>
             </div>
-            <div class="traffic-toggle">
-                <span class="traffic-label">➖ Shape:</span>
-                <div class="traffic-buttons" id="routeShapeBtns">
-                    <button type="button" class="shape-btn active" data-route-shape="solid">Solid</button>
-                    <button type="button" class="shape-btn" data-route-shape="dash">Dash</button>
-                    <button type="button" class="shape-btn" data-route-shape="dot">Dots</button>
-                    <button type="button" class="shape-btn" data-route-shape="glow">Glow</button>
-                </div>
-            </div>
-
-            <div class="traffic-toggle">
-                <span class="traffic-label">🚗 Car:</span>
-                <div class="traffic-buttons car-mini" id="carMiniPicker"></div>
-            </div>
-            <div class="traffic-toggle">
-                <span class="traffic-label">📐 Size:</span>
-                <div class="traffic-buttons" id="carSizeBtns">
-                    <button type="button" class="shape-btn" data-car-size="s" title="Small">S</button>
-                    <button type="button" class="shape-btn" data-car-size="m" title="Medium">M</button>
-                    <button type="button" class="shape-btn active" data-car-size="l" title="Large">L</button>
-                    <button type="button" class="shape-btn" data-car-size="xl" title="Extra large">XL</button>
-                </div>
-            </div>
 
             <div class="traffic-toggle">
                 <span class="traffic-label">🚦 Traffic:</span>
@@ -1272,7 +1284,10 @@
                 </div>
             </div>
             
-            <button id="goBtn" class="btn-go">🚀 GO</button>
+            <div class="action-row">
+                <button id="goBtn" class="btn-search">🔍 Search</button>
+                <button id="startNavBtn" class="btn-go hidden">🚀 GO</button>
+            </div>
         </div>
         
         <div class="button-group">
@@ -1281,6 +1296,7 @@
             <button id="clearBtn" class="btn btn-secondary">✖️ Clear</button>
         </div>
     </div>
+    <button type="button" class="panel-tab" id="panelShowBtn">ROUTE</button>
 
     <div class="places-panel" id="placesPanel">
         <div class="places-head">
@@ -1481,12 +1497,15 @@
                     if (savedSize && ['s', 'm', 'l', 'xl'].includes(savedSize)) this.carSize = savedSize;
                 } catch (_) {}
                 this.mapQuality = 'med';
-                this.mapStyle = 'voyager';
+                this.mapStyle = 'drive';
                 try {
                     const savedQ = localStorage.getItem('tesla_map_quality');
                     if (savedQ === 'low' || savedQ === 'med' || savedQ === 'high') this.mapQuality = savedQ;
                     const savedS = localStorage.getItem('tesla_map_style');
-                    const legacy = { clean: 'esri', simple: 'voyager' };
+                    const legacy = {
+                        clean: 'drive', simple: 'drive', voyager: 'drive', light: 'drive',
+                        google: 'osm', night: 'drive', esri: 'osm'
+                    };
                     const mapped = legacy[savedS] || savedS;
                     if (this.isMapStyleId(mapped)) this.mapStyle = mapped;
                 } catch (_) {}
@@ -1553,6 +1572,7 @@
                 this.syncRouteLineButtons();
                 this.loadPlaces();
                 this.setPlacesHidden(false);
+                this.setPanelHidden(false);
                 this.restoreDeveloperMode();
                 this.registerTileCache();
                 this.startYandexTraffic();
@@ -1560,21 +1580,17 @@
             }
             
             isMapStyleId(id) {
-                return ['voyager', 'light', 'osm', 'google', 'vector', 'sat', 'night', 'esri'].includes(id);
+                return ['drive', 'osm', 'vector', 'sat'].includes(id);
             }
 
             mapStyleMeta(id) {
                 const all = {
-                    voyager: { label: 'Voyager', hint: 'Carto Voyager — colored streets, fast (best everyday car default)' },
-                    light: { label: 'Light', hint: 'Carto Light — pale/minimal, fastest, lowest data' },
+                    drive: { label: 'Drive', hint: 'Drive — yellow buildings + green parks (shows right away)' },
                     osm: { label: 'OSM', hint: 'OpenStreetMap — classic detail, reliable, medium speed' },
-                    google: { label: 'Google', hint: 'Google roadmap — most realistic streets, medium data' },
                     vector: { label: 'Vector', hint: 'OpenFreeMap with 3D buildings — sharp, heavier on LTE' },
-                    sat: { label: 'Sat', hint: 'Satellite — full road & building labels' },
-                    night: { label: 'Night', hint: 'Dark map — fast, good at night' },
-                    esri: { label: 'Esri', hint: 'Esri streets — sometimes shows “data not available”' }
+                    sat: { label: 'Sat', hint: 'Satellite — full road & building labels' }
                 };
-                return all[id] || all.voyager;
+                return all[id] || all.drive;
             }
 
             applyMapQuality(level, silent = false) {
@@ -1585,7 +1601,7 @@
                 };
                 const q = presets[level] || presets.med;
                 this.mapQuality = presets[level] ? level : 'med';
-                if (!this.isMapStyleId(this.mapStyle)) this.mapStyle = 'voyager';
+                if (!this.isMapStyleId(this.mapStyle)) this.mapStyle = 'drive';
                 const style = this.tileConfig();
 
                 if (this.baseTileLayer) {
@@ -1606,10 +1622,10 @@
                 this._tileFail = 0;
                 this.baseTileLayer.on('tileerror', () => {
                     this._tileFail = (this._tileFail || 0) + 1;
-                    if (this._tileFail >= 10 && this.mapStyle !== 'voyager') {
-                        this.mapStyle = 'voyager';
+                    if (this._tileFail >= 10 && this.mapStyle !== 'osm') {
+                        this.mapStyle = 'osm';
                         this.applyMapQuality(this.mapQuality, true);
-                        this.notify('Map tiles switched to Voyager', 'info');
+                        this.notify('Map tiles switched to OSM', 'info');
                     }
                 });
 
@@ -1632,6 +1648,7 @@
                     this.notify('🗺️ ' + this.mapStyleMeta(this.mapStyle).label + ' · ' + qLabel, 'info');
                 }
                 this.applyGlStyle(true);
+                this.syncPlanGlPreview();
                 if (this.isNavigating) {
                     setTimeout(() => {
                         this.refreshTiles();
@@ -1662,17 +1679,12 @@
 
             tileConfig() {
                 const styles = {
-                    voyager: {
-                        url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-                        maxNative: 20,
-                        subdomains: 'abcd',
-                        attrib: '© OpenStreetMap © CARTO'
-                    },
-                    light: {
-                        url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                        maxNative: 20,
-                        subdomains: 'abcd',
-                        attrib: '© OpenStreetMap © CARTO'
+                    // Planning uses OSM raster; navigation GL uses OpenFreeMap Positron.
+                    drive: {
+                        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        maxNative: 19,
+                        subdomains: 'abc',
+                        attrib: '© OpenStreetMap © OpenFreeMap'
                     },
                     osm: {
                         url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -1680,17 +1692,11 @@
                         subdomains: 'abc',
                         attrib: '© OpenStreetMap'
                     },
-                    google: {
-                        url: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=en',
-                        maxNative: 21,
-                        subdomains: '0123',
-                        attrib: '© Google'
-                    },
-                    // Leaflet planning view uses Voyager; drive GL switches to OpenFreeMap vector.
+                    // Leaflet planning view uses OSM raster; drive GL switches to OpenFreeMap Liberty.
                     vector: {
-                        url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-                        maxNative: 20,
-                        subdomains: 'abcd',
+                        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        maxNative: 19,
+                        subdomains: 'abc',
                         attrib: '© OpenStreetMap © OpenFreeMap'
                     },
                     sat: {
@@ -1698,21 +1704,9 @@
                         maxNative: 19,
                         subdomains: '',
                         attrib: '© Esri'
-                    },
-                    night: {
-                        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-                        maxNative: 20,
-                        subdomains: 'abcd',
-                        attrib: '© OpenStreetMap © CARTO'
-                    },
-                    esri: {
-                        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-                        maxNative: 19,
-                        subdomains: '',
-                        attrib: '© Esri'
                     }
                 };
-                return styles[this.mapStyle] || styles.voyager;
+                return styles[this.mapStyle] || styles.drive;
             }
 
             isInCanada(lat, lon) {
@@ -1722,9 +1716,7 @@
             }
 
             useCanadaGoogle() {
-                if (this.searchMode === 'google') return true;
-                if (this.currentPos) return this.isInCanada(this.currentPos[0], this.currentPos[1]);
-                return !!this._inCanada;
+                return false;
             }
 
             googleTrafficTileUrl(x, y, z) {
@@ -2012,7 +2004,7 @@
             }
 
             yaTrafficBeforeId() {
-                const prefer = ['tesla-buildings', 'building', 'building-3d', 'building-top', 'building-color'];
+                const prefer = ['tesla-drive-buildings', 'tesla-buildings', 'building', 'building-3d', 'building-top', 'building-color'];
                 for (let i = 0; i < prefer.length; i++) {
                     if (this.glMap.getLayer(prefer[i])) return prefer[i];
                 }
@@ -2068,9 +2060,192 @@
             }
 
             glStyleUrl() {
-                // Vector = full OpenFreeMap (3D buildings). Sat = raster + labels via glStyleSpec.
+                // Drive uses a locally recolored Positron spec (see getDriveStyleSpec).
+                if (this.mapStyle === 'drive') return null;
                 if (this.mapStyle === 'vector') return 'https://tiles.openfreemap.org/styles/liberty';
                 return null;
+            }
+
+            async getDriveStyleSpec() {
+                if (this._driveStyleSpec && this._driveStyleVer === 9) return this._driveStyleSpec;
+                const res = await fetch('https://tiles.openfreemap.org/styles/positron');
+                if (!res.ok) throw new Error('Drive style fetch failed');
+                const style = await res.json();
+                const buildingFill = '#ffe9a8';
+                const buildingEdge = '#f0d97a';
+                const grass = '#c8e9b8';
+                const grassDeep = '#b5dfa6';
+                const water = '#b8daf0';
+                const waterLine = '#a6d0ea';
+                const land = '#f6f3ea';
+                // Roads / sidewalks gray; floor stays cream.
+                const road = '#c8c8c8';
+                (style.layers || []).forEach((layer) => {
+                    if (!layer || !layer.paint) return;
+                    const id = layer.id || '';
+                    const src = layer['source-layer'] || '';
+                    const key = (id + ' ' + src).toLowerCase();
+                    if (id === 'background') layer.paint['background-color'] = land;
+                    if (id === 'landuse_residential') layer.paint['fill-color'] = '#f0ebe0';
+                    if (id === 'aeroway-area' || id === 'road_area_pier') {
+                        layer.paint['fill-color'] = land;
+                    }
+                    if (id === 'park') {
+                        layer.paint['fill-color'] = grass;
+                        layer.paint['fill-opacity'] = 0.95;
+                    }
+                    if (id === 'landcover_wood') {
+                        layer.paint['fill-color'] = grassDeep;
+                        layer.paint['fill-opacity'] = 0.9;
+                    }
+                    if (id === 'water' || (layer.type === 'fill' && /water/.test(key) && !/ice|label/.test(key))) {
+                        layer.paint['fill-color'] = water;
+                    }
+                    if (id === 'waterway' || (layer.type === 'line' && /waterway/.test(key) && !/label/.test(key))) {
+                        layer.paint['line-color'] = waterLine;
+                    }
+                    // Roads + sidewalks/paths/footways → gray.
+                    if ((/highway|tunnel_|road_|bridge|motorway|transportation|path|foot|pedestrian|sidewalk|steps|cycle|track|service|minor/.test(key))
+                        && !/rail|label|name|shield|aeroway|water/.test(key)
+                        && !/road_area/.test(key)) {
+                        if (layer.type === 'line' && layer.paint['line-color'] != null) {
+                            layer.paint['line-color'] = road;
+                            layer.paint['line-opacity'] = 1;
+                        } else if (layer.type === 'fill' && layer.paint['fill-color'] != null
+                            && /highway|path|foot|pedestrian|sidewalk|steps|cycle|track|service|minor|pier/.test(key)
+                            && !/area/.test(key)) {
+                            layer.paint['fill-color'] = road;
+                        }
+                    }
+                    if (id === 'building' || /building/.test(key)) {
+                        if (layer.type === 'fill') {
+                            layer.paint['fill-color'] = buildingFill;
+                            layer.paint['fill-outline-color'] = buildingEdge;
+                            layer.paint['fill-opacity'] = 1;
+                        }
+                    } else if (/(park|grass|wood|forest|garden|pitch|golf|cemetery|scrub)/.test(key)
+                        && !/ice|glacier|residential|industrial|commercial|building/.test(key)
+                        && layer.type === 'fill') {
+                        layer.paint['fill-color'] = /wood|forest/.test(key) ? grassDeep : grass;
+                        layer.paint['fill-opacity'] = 0.92;
+                    }
+                });
+                // Extra sidewalk/footway overlay so path class matches road gray.
+                style.layers.push({
+                    id: 'tesla-drive-sidewalks',
+                    type: 'line',
+                    source: 'openmaptiles',
+                    'source-layer': 'transportation',
+                    minzoom: 13,
+                    filter: [
+                        'all',
+                        ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
+                        [
+                            'any',
+                            ['==', ['get', 'class'], 'path'],
+                            ['match', ['get', 'subclass'], ['footway', 'path', 'steps', 'pedestrian', 'sidewalk', 'crossing'], true, false]
+                        ]
+                    ],
+                    layout: {
+                        'line-cap': 'round',
+                        'line-join': 'round'
+                    },
+                    paint: {
+                        'line-color': road,
+                        'line-opacity': 1,
+                        'line-width': [
+                            'interpolate', ['exponential', 1.2], ['zoom'],
+                            13, 1.2,
+                            16, 3.5,
+                            20, 10
+                        ]
+                    }
+                });
+                // Soft yellow 3D buildings for Drive.
+                style.layers.push({
+                    id: 'tesla-drive-buildings',
+                    source: 'openmaptiles',
+                    'source-layer': 'building',
+                    type: 'fill-extrusion',
+                    minzoom: 14,
+                    paint: {
+                        'fill-extrusion-color': buildingFill,
+                        'fill-extrusion-height': ['coalesce', ['get', 'render_height'], ['get', 'height'], 10],
+                        'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0],
+                        'fill-extrusion-opacity': 0.75
+                    }
+                });
+                // House numbers on each building (OpenMapTiles housenumber layer).
+                style.layers.push({
+                    id: 'tesla-drive-housenumber',
+                    type: 'symbol',
+                    source: 'openmaptiles',
+                    'source-layer': 'housenumber',
+                    minzoom: 15,
+                    filter: ['has', 'housenumber'],
+                    layout: {
+                        'text-field': ['to-string', ['get', 'housenumber']],
+                        'text-font': ['Noto Sans Bold'],
+                        'text-size': [
+                            'interpolate', ['linear'], ['zoom'],
+                            15, 10,
+                            17, 12,
+                            19, 14
+                        ],
+                        'text-padding': 1,
+                        'text-allow-overlap': false,
+                        'text-ignore-placement': false,
+                        'symbol-placement': 'point'
+                    },
+                    paint: {
+                        'text-color': '#3a2f00',
+                        'text-halo-color': '#fff6c2',
+                        'text-halo-width': 1.6,
+                        'text-halo-blur': 0.2
+                    }
+                });
+                // Also label buildings that carry a housenumber on the building feature itself.
+                style.layers.push({
+                    id: 'tesla-drive-building-number',
+                    type: 'symbol',
+                    source: 'openmaptiles',
+                    'source-layer': 'building',
+                    minzoom: 15,
+                    filter: [
+                        'any',
+                        ['has', 'housenumber'],
+                        ['has', 'addr:housenumber']
+                    ],
+                    layout: {
+                        'text-field': [
+                            'to-string',
+                            [
+                                'coalesce',
+                                ['get', 'housenumber'],
+                                ['get', 'addr:housenumber'],
+                                ''
+                            ]
+                        ],
+                        'text-font': ['Noto Sans Bold'],
+                        'text-size': [
+                            'interpolate', ['linear'], ['zoom'],
+                            15, 10,
+                            17, 12,
+                            19, 14
+                        ],
+                        'text-padding': 2,
+                        'text-max-width': 8,
+                        'text-allow-overlap': false
+                    },
+                    paint: {
+                        'text-color': '#3a2f00',
+                        'text-halo-color': '#fff6c2',
+                        'text-halo-width': 1.6
+                    }
+                });
+                this._driveStyleSpec = style;
+                this._driveStyleVer = 9;
+                return style;
             }
 
             glStyleSpec() {
@@ -2272,21 +2447,28 @@
                 if (!el) return;
                 const start = this.currentPos || [40.1872, 44.5152];
                 this._glStyleUrl = this.glStyleUrl();
+                this._glStyleKey = this.mapStyle === 'drive'
+                    ? 'drive-boot'
+                    : (this._glStyleUrl || ('raster:' + this.mapStyle + ':' + this.mapQuality));
+                // Start with a light placeholder; applyGlStyle swaps in Drive/Vector/Sat.
+                const bootStyle = this.mapStyle === 'drive'
+                    ? { version: 8, sources: {}, layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#f7f2e4' } }] }
+                    : (this._glStyleUrl || this.glStyleSpec());
                 this.glMap = new maplibregl.Map({
                     container: el,
-                    style: this._glStyleUrl || this.glStyleSpec(),
+                    style: bootStyle,
                     center: [start[1], start[0]],
-                    zoom: this.integerZoom(),
-                    pitch: this.currentCamera().angle,
-                    bearing: this.heading || 0,
+                    zoom: Math.max(12, this.map ? this.map.getZoom() : 12),
+                    pitch: this.isNavigating ? this.currentCamera().angle : 0,
+                    bearing: this.isNavigating ? (this.heading || 0) : 0,
                     attributionControl: false,
                     fadeDuration: 0,
                     maxPitch: 70,
                     maxZoom: 21,
-                    minZoom: 12,
+                    minZoom: 3,
                     interactive: false,
                     pixelRatio: 1,
-                    antialias: this.mapStyle === 'vector',
+                    antialias: this.mapStyle === 'vector' || this.mapStyle === 'drive',
                     renderWorldCopies: false,
                     maxTileCacheSize: 250,
                     transformRequest: (url, type) => {
@@ -2326,28 +2508,64 @@
             applyGlStyle(force = false) {
                 if (!this.glMap) return;
                 const url = this.glStyleUrl();
-                const key = url || ('raster:' + this.mapStyle + ':' + this.mapQuality);
-                if (!force && this._glStyleKey === key) return;
-                this._glStyleKey = key;
-                this._glStyleUrl = url;
-                this.glMap.setStyle(url || this.glStyleSpec());
-                this.glMap.once('style.load', () => {
+                const key = this.mapStyle === 'drive'
+                    ? 'drive-positron-palette-v9'
+                    : (url || ('raster:' + this.mapStyle + ':' + this.mapQuality));
+                const polish = () => {
+                    if (!this.glMap || !this.glMap.isStyleLoaded()) return;
                     this.polishDriveMap();
                     this.syncGlRoute();
                     if (this.yandexTraffic) this.syncGlTraffic(true);
-                });
+                    if (this.wantsPlanGl()) this.syncPlanGlFromLeaflet(true);
+                    try { this.glMap.resize(); this.glMap.triggerRepaint(); } catch (_) {}
+                };
+                if (!force && this._glStyleKey === key) {
+                    polish();
+                    return;
+                }
+                this._glStyleKey = key;
+                this._glStyleUrl = url;
+                this._drivePaletteRetried = false;
+
+                const setAndPolish = (style) => {
+                    this.glMap.setStyle(style);
+                    this.glMap.once('style.load', polish);
+                    this.glMap.once('idle', () => {
+                        polish();
+                        try { this.glMap.resize(); this.glMap.triggerRepaint(); } catch (_) {}
+                    });
+                    clearTimeout(this._glPolishTimer);
+                    this._glPolishTimer = setTimeout(polish, 300);
+                    clearTimeout(this._glPolishTimer2);
+                    this._glPolishTimer2 = setTimeout(polish, 1000);
+                };
+
+                if (this.mapStyle === 'drive') {
+                    this.getDriveStyleSpec()
+                        .then((spec) => setAndPolish(spec))
+                        .catch((err) => {
+                            console.warn('drive style', err);
+                            setAndPolish('https://tiles.openfreemap.org/styles/positron');
+                        });
+                    return;
+                }
+                setAndPolish(url || this.glStyleSpec());
             }
 
             polishDriveMap() {
                 if (!this.glMap || !this.glMap.isStyleLoaded()) return;
-                // Sat: imagery + labels, no 3D. Vector: hide clutter + add 3D buildings.
+                // Sat: imagery + labels. Drive/Vector: hide POI clutter. Vector only: 3D buildings.
                 if (this.mapStyle === 'sat') {
                     this.ensureSatLabels();
                 } else {
-                    const hide = /poi|housenumber|housename|attraction|shop|airport-label|ferry|park_outline/i;
+                    // Keep Drive house numbers visible; hide other POI clutter.
+                    const hide = this.mapStyle === 'drive'
+                        ? /^(?!tesla-drive).*?(poi|housename|attraction|shop|airport-label|ferry|park_outline)/i
+                        : /poi|housenumber|housename|attraction|shop|airport-label|ferry|park_outline/i;
                     const dim = /place-|city|town|village|suburb|neighbourhood|continent|water_name|waterway-name/i;
                     (this.glMap.getStyle().layers || []).forEach((layer) => {
                         if (!layer || !layer.id || !this.glMap.getLayer(layer.id)) return;
+                        if (/^tesla-drive-house|^tesla-drive-building-number/i.test(layer.id)) return;
                         try {
                             if (hide.test(layer.id)) {
                                 this.glMap.setLayoutProperty(layer.id, 'visibility', 'none');
@@ -2356,6 +2574,10 @@
                             }
                         } catch (_) {}
                     });
+                }
+                if (this.mapStyle === 'drive') {
+                    this.applyDrivePalette();
+                    this.ensureDriveHouseNumbers();
                 }
                 if (this.mapStyle === 'vector' && this.glMap.getSource('openmaptiles') && !this.glMap.getLayer('tesla-buildings')) {
                     try {
@@ -2384,6 +2606,259 @@
                 } else {
                     this.syncGlTraffic(!this.glMap.getSource('ya-traffic'));
                 }
+            }
+
+            // Soft Tesla-like palette: cream land, vivid yellow buildings, vivid green parks.
+            applyDrivePalette() {
+                if (!this.glMap || !this.glMap.isStyleLoaded()) return;
+                const setPaint = (id, prop, value) => {
+                    if (!this.glMap.getLayer(id)) return false;
+                    try {
+                        this.glMap.setPaintProperty(id, prop, value);
+                        return true;
+                    } catch (_) {
+                        return false;
+                    }
+                };
+                // Soft pastel Drive palette (cream floor, gray roads).
+                const buildingFill = '#ffe9a8';
+                const buildingEdge = '#f0d97a';
+                const grass = '#c8e9b8';
+                const grassDeep = '#b5dfa6';
+                const water = '#b8daf0';
+                const waterLine = '#a6d0ea';
+                const land = '#f6f3ea';
+                const road = '#c8c8c8';
+
+                setPaint('background', 'background-color', land);
+                setPaint('landuse_residential', 'fill-color', '#f0ebe0');
+                setPaint('aeroway-area', 'fill-color', land);
+                setPaint('road_area_pier', 'fill-color', land);
+                setPaint('park', 'fill-color', grass);
+                setPaint('park', 'fill-opacity', 0.95);
+                setPaint('landcover_wood', 'fill-color', grassDeep);
+                setPaint('landcover_wood', 'fill-opacity', 0.9);
+                setPaint('water', 'fill-color', water);
+                setPaint('waterway', 'line-color', waterLine);
+                setPaint('building', 'fill-color', buildingFill);
+                setPaint('building', 'fill-outline-color', buildingEdge);
+                setPaint('building', 'fill-opacity', 1);
+                // Roads + sidewalks gray
+                [
+                    'highway_path', 'highway_minor', 'highway_major_inner', 'highway_major_casing',
+                    'highway_major_subtle', 'highway_motorway_inner', 'highway_motorway_casing',
+                    'highway_motorway_subtle', 'highway_motorway_bridge_inner', 'highway_motorway_bridge_casing',
+                    'tunnel_motorway_inner', 'tunnel_motorway_casing', 'tesla-drive-sidewalks'
+                ].forEach((id) => {
+                    setPaint(id, 'line-color', road);
+                    setPaint(id, 'line-opacity', 1);
+                });
+
+                (this.glMap.getStyle().layers || []).forEach((layer) => {
+                    if (!layer || !layer.id) return;
+                    const id = layer.id;
+                    const src = layer['source-layer'] || '';
+                    const key = (id + ' ' + src).toLowerCase();
+                    if (layer.type === 'background') {
+                        setPaint(id, 'background-color', land);
+                    } else if (layer.type === 'fill') {
+                        if (/building/.test(key)) {
+                            setPaint(id, 'fill-color', buildingFill);
+                            setPaint(id, 'fill-outline-color', buildingEdge);
+                            setPaint(id, 'fill-opacity', 1);
+                        } else if (/water/.test(key) && !/ice|label/.test(key)) {
+                            setPaint(id, 'fill-color', water);
+                        } else if (/(park|grass|wood|forest|garden|pitch|golf|cemetery|scrub)/.test(key)
+                            && !/ice|glacier|residential|industrial|commercial|building/.test(key)) {
+                            setPaint(id, 'fill-color', /wood|forest/.test(key) ? grassDeep : grass);
+                            setPaint(id, 'fill-opacity', 0.92);
+                        } else if (/landuse|residential|aeroway|pier|area/.test(key)
+                            && !/building|water|park|wood|forest/.test(key)) {
+                            setPaint(id, 'fill-color', /residential/.test(key) ? '#f0ebe0' : land);
+                        }
+                    } else if (layer.type === 'line') {
+                        if (/waterway/.test(key) && !/label/.test(key)) {
+                            setPaint(id, 'line-color', waterLine);
+                        } else if ((/highway|tunnel_|road_|bridge|motorway|transportation|path|foot|pedestrian|sidewalk|steps|cycle|track|service|minor/.test(key))
+                            && !/rail|label|name|shield|aeroway|water/.test(key)) {
+                            setPaint(id, 'line-color', road);
+                            setPaint(id, 'line-opacity', 1);
+                        }
+                    }
+                });
+
+                // Soft yellow 3D buildings when vector source is ready.
+                if (this.glMap.getSource('openmaptiles')) {
+                    try {
+                        // Keep flat yellow buildings visible; extrusion adds depth when zoomed in.
+                        if (this.glMap.getLayer('building')) {
+                            this.glMap.setLayoutProperty('building', 'visibility', 'visible');
+                            setPaint('building', 'fill-color', buildingFill);
+                            setPaint('building', 'fill-outline-color', buildingEdge);
+                            setPaint('building', 'fill-opacity', 1);
+                        }
+                        if (!this.glMap.getLayer('tesla-drive-buildings')) {
+                            this.glMap.addLayer({
+                                id: 'tesla-drive-buildings',
+                                source: 'openmaptiles',
+                                'source-layer': 'building',
+                                type: 'fill-extrusion',
+                                minzoom: 14,
+                                paint: {
+                                    'fill-extrusion-color': buildingFill,
+                                    'fill-extrusion-height': ['coalesce', ['get', 'render_height'], ['get', 'height'], 10],
+                                    'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0],
+                                    'fill-extrusion-opacity': 0.8
+                                }
+                            }, this.yaTrafficBeforeId() || undefined);
+                        } else {
+                            setPaint('tesla-drive-buildings', 'fill-extrusion-color', buildingFill);
+                        }
+                    } catch (err) {
+                        console.warn('drive buildings', err);
+                        if (this.glMap.getLayer('building')) {
+                            try { this.glMap.setLayoutProperty('building', 'visibility', 'visible'); } catch (_) {}
+                        }
+                    }
+                }
+
+                // Retry once — Positron layers can finish a tick after style.load.
+                if (!this._drivePaletteRetried) {
+                    this._drivePaletteRetried = true;
+                    setTimeout(() => {
+                        if (this.mapStyle === 'drive') this.applyDrivePalette();
+                    }, 400);
+                }
+            }
+
+            ensureDriveHouseNumbers() {
+                if (!this.glMap || this.mapStyle !== 'drive' || !this.glMap.isStyleLoaded()) return;
+                if (!this.glMap.getSource('openmaptiles')) return;
+                const before = this.glMap.getLayer('route-glow')
+                    ? 'route-glow'
+                    : (this.glMap.getLayer('route-line') ? 'route-line' : undefined);
+                const add = (id, layer) => {
+                    if (this.glMap.getLayer(id)) {
+                        try { this.glMap.setLayoutProperty(id, 'visibility', 'visible'); } catch (_) {}
+                        return;
+                    }
+                    try { this.glMap.addLayer({ id, ...layer }, before); } catch (e) { console.warn(id, e); }
+                };
+                add('tesla-drive-housenumber', {
+                    type: 'symbol',
+                    source: 'openmaptiles',
+                    'source-layer': 'housenumber',
+                    minzoom: 15,
+                    filter: ['has', 'housenumber'],
+                    layout: {
+                        'text-field': ['to-string', ['get', 'housenumber']],
+                        'text-font': ['Noto Sans Bold'],
+                        'text-size': [
+                            'interpolate', ['linear'], ['zoom'],
+                            15, 10, 17, 12, 19, 14
+                        ],
+                        'text-padding': 1,
+                        'text-allow-overlap': false
+                    },
+                    paint: {
+                        'text-color': '#3a2f00',
+                        'text-halo-color': '#fff6c2',
+                        'text-halo-width': 1.6
+                    }
+                });
+                add('tesla-drive-building-number', {
+                    type: 'symbol',
+                    source: 'openmaptiles',
+                    'source-layer': 'building',
+                    minzoom: 15,
+                    filter: [
+                        'any',
+                        ['has', 'housenumber'],
+                        ['has', 'addr:housenumber']
+                    ],
+                    layout: {
+                        'text-field': [
+                            'to-string',
+                            [
+                                'coalesce',
+                                ['get', 'housenumber'],
+                                ['get', 'addr:housenumber'],
+                                ''
+                            ]
+                        ],
+                        'text-font': ['Noto Sans Bold'],
+                        'text-size': [
+                            'interpolate', ['linear'], ['zoom'],
+                            15, 10, 17, 12, 19, 14
+                        ],
+                        'text-padding': 2,
+                        'text-max-width': 8
+                    },
+                    paint: {
+                        'text-color': '#3a2f00',
+                        'text-halo-color': '#fff6c2',
+                        'text-halo-width': 1.6
+                    }
+                });
+            }
+
+            wantsPlanGl() {
+                return !this.isNavigating && (this.mapStyle === 'drive' || this.mapStyle === 'vector');
+            }
+
+            syncPlanGlPreview() {
+                const stage = document.getElementById('mapStage');
+                if (!stage) return;
+                if (this.isNavigating) {
+                    stage.classList.remove('plan-gl');
+                    return;
+                }
+                stage.classList.remove('drive-gl', 'drive-3d');
+                if (!this.wantsPlanGl() || typeof maplibregl === 'undefined') {
+                    stage.classList.remove('plan-gl');
+                    return;
+                }
+                stage.classList.add('plan-gl');
+                this.ensureGlMap();
+                this.applyGlStyle(true);
+                this.bindPlanGlSync();
+                this.syncPlanGlFromLeaflet(true);
+                // Extra safety so Drive colors always land after Positron finishes.
+                clearTimeout(this._planPaletteTimer);
+                this._planPaletteTimer = setTimeout(() => {
+                    if (this.mapStyle === 'drive' && this.glMap && this.glMap.isStyleLoaded()) {
+                        this._drivePaletteRetried = false;
+                        this.applyDrivePalette();
+                    }
+                }, 500);
+            }
+
+            bindPlanGlSync() {
+                if (!this.map || this._planGlBound) return;
+                this._planGlBound = () => {
+                    if (!this.wantsPlanGl()) return;
+                    this.syncPlanGlFromLeaflet(false);
+                };
+                this.map.on('move', this._planGlBound);
+                this.map.on('zoom', this._planGlBound);
+                this.map.on('moveend', this._planGlBound);
+                this.map.on('zoomend', this._planGlBound);
+            }
+
+            syncPlanGlFromLeaflet(force = false) {
+                if (!this.glMap || !this.map || !this.wantsPlanGl()) return;
+                const c = this.map.getCenter();
+                const z = this.map.getZoom();
+                const bearing = 0;
+                const pitch = 0;
+                try {
+                    if (force) {
+                        this.glMap.jumpTo({ center: [c.lng, c.lat], zoom: z, bearing, pitch });
+                    } else {
+                        this.glMap.jumpTo({ center: [c.lng, c.lat], zoom: z, bearing, pitch });
+                    }
+                    this.glMap.resize();
+                } catch (_) {}
             }
 
             cacheDrivePadding() {
@@ -3114,11 +3589,12 @@
                 const useGl = !!enabled && typeof maplibregl !== 'undefined';
                 stage.classList.toggle('drive-3d', !!enabled && !useGl);
                 stage.classList.toggle('drive-gl', useGl);
+                if (useGl) stage.classList.remove('plan-gl');
                 this._driveFocus = null;
                 if (useGl) {
                     this.ensureGlMap();
                     this.applyYandexTrafficLayer();
-                    this.applyGlStyle();
+                    this.applyGlStyle(true);
                     this.syncGlRoute();
                     this.syncGlCar();
                     this.seedTrafficCars(true);
@@ -3127,6 +3603,7 @@
                     this.stopDriveCam();
                     this.clearTrafficCars();
                     this.applyYandexTrafficLayer();
+                    this.syncPlanGlPreview();
                 }
                 const kick = () => {
                     if (this.glMap) this.glMap.resize();
@@ -3315,10 +3792,8 @@
                 if (!this._regionBooted) {
                     this._regionBooted = true;
                     this.preferLocalSearchMode();
-                    if (this.isInCanada(latitude, longitude)) {
-                        this.notify('🇨🇦 Canada: Google streets + traffic', 'success');
-                    } else if (!this.inYandexTrafficCoverage(latitude, longitude) && this.yandexTraffic) {
-                        this.notify('Yandex traffic is limited here — use OSM or Google 🇨🇦', 'info');
+                    if (!this.inYandexTrafficCoverage(latitude, longitude) && this.yandexTraffic) {
+                        this.notify('Yandex traffic is limited in this region', 'info');
                     }
                 }
                 if (this.yandexTraffic && this._yaRegions && (!this._yaPos || this.calculateDistance(this._yaPos, this.currentPos) > 3)) {
@@ -3558,40 +4033,11 @@
                     this.resetToNorth();
                 };
                 
-                document.querySelectorAll('.mode-btn').forEach(btn => {
-                    btn.onclick = () => {
-                        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-                        btn.classList.add('active');
-                        this.searchMode = btn.dataset.mode;
-                        if (btn.dataset.mode === 'google') {
-                            this._inCanada = true;
-                            this.applyMapQuality(this.mapQuality, true);
-                            this.syncTrafficButtons();
-                            if (this.yandexTraffic) this.refreshYandexTraffic(true);
-                            this.notify('🇨🇦 Google mode (Canada streets)', 'success');
-                        } else if (btn.dataset.mode === 'yandex') {
-                            this._inCanada = false;
-                            this.applyMapQuality(this.mapQuality, true);
-                            this.syncTrafficButtons();
-                            if (this.yandexTraffic) this.refreshYandexTraffic(true);
-                        } else {
-                            this.applyMapQuality(this.mapQuality, true);
-                            this.syncTrafficButtons();
-                        }
-                    };
-                });
-                
-                document.querySelectorAll('.quality-btn').forEach(btn => {
-                    btn.onclick = () => this.setMapQuality(btn.dataset.quality);
-                });
                 document.querySelectorAll('.style-btn').forEach(btn => {
                     btn.onclick = () => this.setMapStyle(btn.dataset.style);
                 });
                 document.querySelectorAll('[data-route-color]').forEach((btn) => {
                     btn.onclick = () => this.setRouteLineColor(btn.dataset.routeColor);
-                });
-                document.querySelectorAll('[data-route-shape]').forEach((btn) => {
-                    btn.onclick = () => this.setRouteLineShape(btn.dataset.routeShape);
                 });
                 
                 document.querySelectorAll('.traffic-btn').forEach(btn => {
@@ -3607,6 +4053,8 @@
                 });
                 
                 document.getElementById('locateBtn').onclick = () => this.center();
+                document.getElementById('panelHideBtn').onclick = () => this.setPanelHidden(true);
+                document.getElementById('panelShowBtn').onclick = () => this.setPanelHidden(false);
                 document.getElementById('placesHideBtn').onclick = () => this.setPlacesHidden(true);
                 document.getElementById('placesShowBtn').onclick = () => this.setPlacesHidden(false);
                 document.getElementById('goHomeBtn').onclick = () => this.goSavedSlot('home');
@@ -3768,6 +4216,14 @@
                 this.notify('Camera reset to default', 'info');
             }
             
+            setPanelHidden(hidden) {
+                this.panelHidden = !!hidden;
+                const panel = document.getElementById('controlPanel');
+                const tab = document.getElementById('panelShowBtn');
+                if (panel) panel.classList.toggle('panel-hidden', this.panelHidden);
+                if (tab) tab.classList.toggle('visible', this.panelHidden && !this.isNavigating);
+            }
+
             setPlacesHidden(hidden) {
                 this.placesHidden = !!hidden;
                 const panel = document.getElementById('placesPanel');
@@ -4272,25 +4728,8 @@
 
             preferLocalSearchMode() {
                 if (!this.currentPos) return;
-                const ca = this.isInCanada(this.currentPos[0], this.currentPos[1]);
-                this._inCanada = ca;
-                if (ca) {
-                    this.searchMode = 'google';
-                    document.querySelectorAll('.mode-btn').forEach((b) => {
-                        b.classList.toggle('active', b.dataset.mode === 'google');
-                    });
-                    this.syncTrafficButtons();
-                    this.applyMapQuality(this.mapQuality, true);
-                    if (this.yandexTraffic) this.refreshYandexTraffic(true);
-                    return;
-                }
-                const covered = this.inYandexTrafficCoverage(this.currentPos[0], this.currentPos[1]);
-                if (!covered && this.searchMode === 'yandex') {
-                    this.searchMode = 'osm';
-                    document.querySelectorAll('.mode-btn').forEach((b) => {
-                        b.classList.toggle('active', b.dataset.mode === 'osm');
-                    });
-                }
+                this._inCanada = this.isInCanada(this.currentPos[0], this.currentPos[1]);
+                this.searchMode = 'yandex';
                 this.syncTrafficButtons();
             }
             
@@ -4432,6 +4871,8 @@
                 document.getElementById('navBar').classList.remove('hidden');
                 document.getElementById('turnInstruction').classList.remove('hidden');
                 document.getElementById('controlPanel').classList.add('hidden-ui');
+                const panelTab = document.getElementById('panelShowBtn');
+                if (panelTab) panelTab.classList.remove('visible');
                 const placesPanel = document.getElementById('placesPanel');
                 if (placesPanel) placesPanel.classList.add('hidden-ui');
                 const placesTab = document.getElementById('placesShowBtn');
@@ -4470,6 +4911,7 @@
                 document.getElementById('controlPanel').classList.remove('hidden-ui');
                 const placesPanel = document.getElementById('placesPanel');
                 if (placesPanel) placesPanel.classList.remove('hidden-ui');
+                this.setPanelHidden(!!this.panelHidden);
                 this.setPlacesHidden(!!this.placesHidden);
                 this.updateDriveProgress();
                 
