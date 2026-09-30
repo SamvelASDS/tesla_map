@@ -90,6 +90,22 @@
         body.map-dark .leaflet-container {
             background: #0d0d0d;
         }
+        /* Tesla-like tone from free OSM tiles (no Carto API key). */
+        #map.tone-minimal .leaflet-tile-pane {
+            filter: saturate(0.35) brightness(1.08) contrast(0.92) grayscale(0.2);
+        }
+        #map.tone-quiet .leaflet-tile-pane {
+            filter: saturate(0.12) brightness(1.14) contrast(0.88) grayscale(0.45);
+        }
+        #map.tone-ink .leaflet-tile-pane {
+            filter: invert(1) hue-rotate(180deg) saturate(0.25) brightness(0.95) contrast(0.95);
+        }
+        #map.tone-graphite .leaflet-tile-pane {
+            filter: invert(1) hue-rotate(180deg) grayscale(0.55) brightness(0.82) contrast(1.05);
+        }
+        #map.tone-vector .leaflet-tile-pane {
+            filter: saturate(0.4) brightness(1.06) contrast(0.94);
+        }
         .map-stage.drive-3d .map-camera {
             transform: none;
             will-change: auto;
@@ -1678,44 +1694,21 @@
             }
 
             tileConfig() {
+                // Free OSM tiles for planning; Tesla looks come from tone-* CSS filters.
+                // Drive view uses OpenFreeMap vector styles (positron/dark/liberty).
+                const osm = {
+                    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    maxNative: 19,
+                    subdomains: 'abc',
+                    attrib: '© OpenStreetMap'
+                };
                 const styles = {
-                    minimal: {
-                        url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                        maxNative: 20,
-                        subdomains: 'abcd',
-                        attrib: '© OpenStreetMap © CARTO'
-                    },
-                    quiet: {
-                        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png',
-                        maxNative: 20,
-                        subdomains: 'abcd',
-                        attrib: '© OpenStreetMap © CARTO'
-                    },
-                    ink: {
-                        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-                        maxNative: 20,
-                        subdomains: 'abcd',
-                        attrib: '© OpenStreetMap © CARTO'
-                    },
-                    graphite: {
-                        url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png',
-                        maxNative: 20,
-                        subdomains: 'abcd',
-                        attrib: '© OpenStreetMap © CARTO'
-                    },
-                    osm: {
-                        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        maxNative: 19,
-                        subdomains: 'abc',
-                        attrib: '© OpenStreetMap'
-                    },
-                    // Leaflet planning uses pale raster; drive GL uses OpenFreeMap Liberty + 3D.
-                    vector: {
-                        url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                        maxNative: 20,
-                        subdomains: 'abcd',
-                        attrib: '© OpenStreetMap © OpenFreeMap'
-                    },
+                    minimal: { ...osm, attrib: '© OpenStreetMap' },
+                    quiet: { ...osm, attrib: '© OpenStreetMap' },
+                    ink: { ...osm, attrib: '© OpenStreetMap' },
+                    graphite: { ...osm, attrib: '© OpenStreetMap' },
+                    osm,
+                    vector: { ...osm, attrib: '© OpenStreetMap © OpenFreeMap' },
                     sat: {
                         url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
                         maxNative: 19,
@@ -1734,7 +1727,12 @@
                 const mapEl = document.getElementById('map');
                 if (stage) stage.style.background = tone;
                 if (gl) gl.style.background = tone;
-                if (mapEl) mapEl.style.background = tone;
+                if (mapEl) {
+                    mapEl.style.background = tone;
+                    ['tone-minimal', 'tone-quiet', 'tone-ink', 'tone-graphite', 'tone-vector', 'tone-osm', 'tone-sat']
+                        .forEach((c) => mapEl.classList.remove(c));
+                    mapEl.classList.add('tone-' + (this.isMapStyleId(this.mapStyle) ? this.mapStyle : 'minimal'));
+                }
                 document.body.classList.toggle('map-dark', dark);
             }
 
