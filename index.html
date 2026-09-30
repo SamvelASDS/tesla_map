@@ -81,8 +81,30 @@
         .map-stage.drive-3d {
             perspective: var(--cam-persp, 900px);
             perspective-origin: 50% 75%;
-            background: #d9d5cc;
+            background: #e6e2da;
             overflow: hidden;
+        }
+        body.map-dark .map-stage.drive-3d,
+        body.map-dark .glmap,
+        body.map-dark .map-stage.drive-3d #map,
+        body.map-dark .leaflet-container {
+            background: #0d0d0d;
+        }
+        /* Tesla-like tone from free OSM tiles (no Carto API key). */
+        #map.tone-minimal .leaflet-tile-pane {
+            filter: saturate(0.35) brightness(1.08) contrast(0.92) grayscale(0.2);
+        }
+        #map.tone-quiet .leaflet-tile-pane {
+            filter: saturate(0.12) brightness(1.14) contrast(0.88) grayscale(0.45);
+        }
+        #map.tone-ink .leaflet-tile-pane {
+            filter: invert(1) hue-rotate(180deg) saturate(0.25) brightness(0.95) contrast(0.95);
+        }
+        #map.tone-graphite .leaflet-tile-pane {
+            filter: invert(1) hue-rotate(180deg) grayscale(0.55) brightness(0.82) contrast(1.05);
+        }
+        #map.tone-vector .leaflet-tile-pane {
+            filter: saturate(0.4) brightness(1.06) contrast(0.94);
         }
         .map-stage.drive-3d .map-camera {
             transform: none;
@@ -1207,16 +1229,15 @@
             <div class="traffic-toggle">
                 <span class="traffic-label">🎨 Map:</span>
                 <div class="traffic-buttons" id="mapStyleBtns">
-                    <button class="style-btn active" data-style="voyager" title="Carto Voyager · fast, reliable">Voyager</button>
-                    <button class="style-btn" data-style="light" title="Carto Light · fastest, least data">Light</button>
-                    <button class="style-btn" data-style="osm" title="OpenStreetMap · classic, reliable">OSM</button>
-                    <button class="style-btn" data-style="google" title="Google streets · most realistic">Google</button>
-                    <button class="style-btn" data-style="vector" title="OpenFreeMap vector · sharp but slower">Vector</button>
-                    <button class="style-btn" data-style="sat" title="Satellite + labels · no 3D">Sat</button>
-                    <button class="style-btn" data-style="night" title="Dark night map · fast">Night</button>
-                    <button class="style-btn" data-style="esri" title="Esri streets · may show missing data">Esri</button>
+                    <button class="style-btn active" data-style="minimal" title="Tesla-like pale streets · clean day default">Minimal</button>
+                    <button class="style-btn" data-style="quiet" title="Ultra-clean · almost no labels">Quiet</button>
+                    <button class="style-btn" data-style="ink" title="Tesla-like dark night drive">Ink</button>
+                    <button class="style-btn" data-style="graphite" title="Dark charcoal · labels stripped">Graphite</button>
+                    <button class="style-btn" data-style="osm" title="OpenStreetMap · classic detail">OSM</button>
+                    <button class="style-btn" data-style="vector" title="Sharp vector · 3D buildings">Vector</button>
+                    <button class="style-btn" data-style="sat" title="Satellite + road labels">Sat</button>
                 </div>
-                <div class="style-hint" id="mapStyleHint">Voyager — colored streets, fast load (good default for car)</div>
+                <div class="style-hint" id="mapStyleHint">Minimal — pale Tesla-like streets, clean day drive</div>
             </div>
             
             <div class="traffic-toggle">
@@ -1481,12 +1502,15 @@
                     if (savedSize && ['s', 'm', 'l', 'xl'].includes(savedSize)) this.carSize = savedSize;
                 } catch (_) {}
                 this.mapQuality = 'med';
-                this.mapStyle = 'voyager';
+                this.mapStyle = 'minimal';
                 try {
                     const savedQ = localStorage.getItem('tesla_map_quality');
                     if (savedQ === 'low' || savedQ === 'med' || savedQ === 'high') this.mapQuality = savedQ;
                     const savedS = localStorage.getItem('tesla_map_style');
-                    const legacy = { clean: 'esri', simple: 'voyager' };
+                    const legacy = {
+                        voyager: 'minimal', light: 'quiet', google: 'osm', night: 'ink',
+                        esri: 'minimal', clean: 'minimal', simple: 'minimal'
+                    };
                     const mapped = legacy[savedS] || savedS;
                     if (this.isMapStyleId(mapped)) this.mapStyle = mapped;
                 } catch (_) {}
@@ -1556,25 +1580,33 @@
                 this.restoreDeveloperMode();
                 this.registerTileCache();
                 this.startYandexTraffic();
+                this.applyMapStageTone();
                 this.notify('Ready! 🚗', 'success');
             }
             
             isMapStyleId(id) {
-                return ['voyager', 'light', 'osm', 'google', 'vector', 'sat', 'night', 'esri'].includes(id);
+                return ['minimal', 'quiet', 'ink', 'graphite', 'osm', 'vector', 'sat'].includes(id);
+            }
+
+            isDarkMapStyle(id = this.mapStyle) {
+                return id === 'ink' || id === 'graphite';
+            }
+
+            isVectorGlStyle(id = this.mapStyle) {
+                return id === 'vector' || id === 'minimal' || id === 'quiet' || id === 'ink' || id === 'graphite';
             }
 
             mapStyleMeta(id) {
                 const all = {
-                    voyager: { label: 'Voyager', hint: 'Carto Voyager — colored streets, fast (best everyday car default)' },
-                    light: { label: 'Light', hint: 'Carto Light — pale/minimal, fastest, lowest data' },
-                    osm: { label: 'OSM', hint: 'OpenStreetMap — classic detail, reliable, medium speed' },
-                    google: { label: 'Google', hint: 'Google roadmap — most realistic streets, medium data' },
-                    vector: { label: 'Vector', hint: 'OpenFreeMap with 3D buildings — sharp, heavier on LTE' },
-                    sat: { label: 'Sat', hint: 'Satellite — full road & building labels' },
-                    night: { label: 'Night', hint: 'Dark map — fast, good at night' },
-                    esri: { label: 'Esri', hint: 'Esri streets — sometimes shows “data not available”' }
+                    minimal: { label: 'Minimal', hint: 'Pale Tesla-like streets — clean day default' },
+                    quiet: { label: 'Quiet', hint: 'Ultra-clean — roads only, almost no labels' },
+                    ink: { label: 'Ink', hint: 'Dark Tesla-like night drive' },
+                    graphite: { label: 'Graphite', hint: 'Charcoal dark — labels stripped' },
+                    osm: { label: 'OSM', hint: 'OpenStreetMap — classic detail' },
+                    vector: { label: 'Vector', hint: 'Sharp vector with 3D buildings' },
+                    sat: { label: 'Sat', hint: 'Satellite — road & place labels' }
                 };
-                return all[id] || all.voyager;
+                return all[id] || all.minimal;
             }
 
             applyMapQuality(level, silent = false) {
@@ -1585,7 +1617,7 @@
                 };
                 const q = presets[level] || presets.med;
                 this.mapQuality = presets[level] ? level : 'med';
-                if (!this.isMapStyleId(this.mapStyle)) this.mapStyle = 'voyager';
+                if (!this.isMapStyleId(this.mapStyle)) this.mapStyle = 'minimal';
                 const style = this.tileConfig();
 
                 if (this.baseTileLayer) {
@@ -1606,14 +1638,15 @@
                 this._tileFail = 0;
                 this.baseTileLayer.on('tileerror', () => {
                     this._tileFail = (this._tileFail || 0) + 1;
-                    if (this._tileFail >= 10 && this.mapStyle !== 'voyager') {
-                        this.mapStyle = 'voyager';
+                    if (this._tileFail >= 10 && this.mapStyle !== 'minimal') {
+                        this.mapStyle = 'minimal';
                         this.applyMapQuality(this.mapQuality, true);
-                        this.notify('Map tiles switched to Voyager', 'info');
+                        this.notify('Map tiles switched to Minimal', 'info');
                     }
                 });
 
                 this.applyDriveMapSize(q.size);
+                this.applyMapStageTone();
 
                 document.querySelectorAll('.quality-btn').forEach((btn) => {
                     btn.classList.toggle('active', btn.dataset.quality === this.mapQuality);
@@ -1661,58 +1694,46 @@
             }
 
             tileConfig() {
+                // Free OSM tiles for planning; Tesla looks come from tone-* CSS filters.
+                // Drive view uses OpenFreeMap vector styles (positron/dark/liberty).
+                const osm = {
+                    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    maxNative: 19,
+                    subdomains: 'abc',
+                    attrib: '© OpenStreetMap'
+                };
                 const styles = {
-                    voyager: {
-                        url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-                        maxNative: 20,
-                        subdomains: 'abcd',
-                        attrib: '© OpenStreetMap © CARTO'
-                    },
-                    light: {
-                        url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                        maxNative: 20,
-                        subdomains: 'abcd',
-                        attrib: '© OpenStreetMap © CARTO'
-                    },
-                    osm: {
-                        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        maxNative: 19,
-                        subdomains: 'abc',
-                        attrib: '© OpenStreetMap'
-                    },
-                    google: {
-                        url: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=en',
-                        maxNative: 21,
-                        subdomains: '0123',
-                        attrib: '© Google'
-                    },
-                    // Leaflet planning view uses Voyager; drive GL switches to OpenFreeMap vector.
-                    vector: {
-                        url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-                        maxNative: 20,
-                        subdomains: 'abcd',
-                        attrib: '© OpenStreetMap © OpenFreeMap'
-                    },
+                    minimal: { ...osm, attrib: '© OpenStreetMap' },
+                    quiet: { ...osm, attrib: '© OpenStreetMap' },
+                    ink: { ...osm, attrib: '© OpenStreetMap' },
+                    graphite: { ...osm, attrib: '© OpenStreetMap' },
+                    osm,
+                    vector: { ...osm, attrib: '© OpenStreetMap © OpenFreeMap' },
                     sat: {
                         url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
                         maxNative: 19,
                         subdomains: '',
                         attrib: '© Esri'
-                    },
-                    night: {
-                        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-                        maxNative: 20,
-                        subdomains: 'abcd',
-                        attrib: '© OpenStreetMap © CARTO'
-                    },
-                    esri: {
-                        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-                        maxNative: 19,
-                        subdomains: '',
-                        attrib: '© Esri'
                     }
                 };
-                return styles[this.mapStyle] || styles.voyager;
+                return styles[this.mapStyle] || styles.minimal;
+            }
+
+            applyMapStageTone() {
+                const dark = this.isDarkMapStyle();
+                const tone = dark ? '#0d0d0d' : '#e6e2da';
+                const stage = document.getElementById('mapStage');
+                const gl = document.getElementById('glmap');
+                const mapEl = document.getElementById('map');
+                if (stage) stage.style.background = tone;
+                if (gl) gl.style.background = tone;
+                if (mapEl) {
+                    mapEl.style.background = tone;
+                    ['tone-minimal', 'tone-quiet', 'tone-ink', 'tone-graphite', 'tone-vector', 'tone-osm', 'tone-sat']
+                        .forEach((c) => mapEl.classList.remove(c));
+                    mapEl.classList.add('tone-' + (this.isMapStyleId(this.mapStyle) ? this.mapStyle : 'minimal'));
+                }
+                document.body.classList.toggle('map-dark', dark);
             }
 
             isInCanada(lat, lon) {
@@ -2068,8 +2089,14 @@
             }
 
             glStyleUrl() {
-                // Vector = full OpenFreeMap (3D buildings). Sat = raster + labels via glStyleSpec.
+                // OpenFreeMap vector styles for Tesla-like drive; sat/osm stay raster.
                 if (this.mapStyle === 'vector') return 'https://tiles.openfreemap.org/styles/liberty';
+                if (this.mapStyle === 'minimal' || this.mapStyle === 'quiet') {
+                    return 'https://tiles.openfreemap.org/styles/positron';
+                }
+                if (this.mapStyle === 'ink' || this.mapStyle === 'graphite') {
+                    return 'https://tiles.openfreemap.org/styles/dark';
+                }
                 return null;
             }
 
@@ -2286,7 +2313,7 @@
                     minZoom: 12,
                     interactive: false,
                     pixelRatio: 1,
-                    antialias: this.mapStyle === 'vector',
+                    antialias: this.isVectorGlStyle(),
                     renderWorldCopies: false,
                     maxTileCacheSize: 250,
                     transformRequest: (url, type) => {
@@ -2340,19 +2367,23 @@
 
             polishDriveMap() {
                 if (!this.glMap || !this.glMap.isStyleLoaded()) return;
-                // Sat: imagery + labels, no 3D. Vector: hide clutter + add 3D buildings.
+                this.applyMapStageTone();
+                // Sat: imagery + labels. Minimal styles: strip clutter for Tesla-like calm.
                 if (this.mapStyle === 'sat') {
                     this.ensureSatLabels();
-                } else {
-                    const hide = /poi|housenumber|housename|attraction|shop|airport-label|ferry|park_outline/i;
+                } else if (this.isVectorGlStyle()) {
+                    const ultra = this.mapStyle === 'quiet' || this.mapStyle === 'graphite';
+                    const hide = ultra
+                        ? /poi|housenumber|housename|attraction|shop|airport|ferry|park|place-|city|town|village|suburb|neighbourhood|continent|water_name|waterway-name|road_label|highway-name|highway_name|transportation_name|housenumber|bridge|tunnel_name|rail|path|footway/i
+                        : /poi|housenumber|housename|attraction|shop|airport-label|ferry|park_outline/i;
                     const dim = /place-|city|town|village|suburb|neighbourhood|continent|water_name|waterway-name/i;
                     (this.glMap.getStyle().layers || []).forEach((layer) => {
                         if (!layer || !layer.id || !this.glMap.getLayer(layer.id)) return;
                         try {
-                            if (hide.test(layer.id)) {
+                            if (hide.test(layer.id) || (ultra && layer.type === 'symbol')) {
                                 this.glMap.setLayoutProperty(layer.id, 'visibility', 'none');
-                            } else if (layer.type === 'symbol' && dim.test(layer.id)) {
-                                this.glMap.setPaintProperty(layer.id, 'text-opacity', 0.5);
+                            } else if (!ultra && layer.type === 'symbol' && dim.test(layer.id)) {
+                                this.glMap.setPaintProperty(layer.id, 'text-opacity', 0.45);
                             }
                         } catch (_) {}
                     });
@@ -2366,7 +2397,7 @@
                             type: 'fill-extrusion',
                             minzoom: 14,
                             paint: {
-                                'fill-extrusion-color': '#cfc8bc',
+                                'fill-extrusion-color': this.isDarkMapStyle() ? '#2a2a2a' : '#cfc8bc',
                                 'fill-extrusion-height': ['coalesce', ['get', 'render_height'], ['get', 'height'], 10],
                                 'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0],
                                 'fill-extrusion-opacity': 0.52
