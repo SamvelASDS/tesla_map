@@ -618,7 +618,7 @@
             flex-wrap: wrap;
         }
         
-        .traffic-btn, .quality-btn, .style-btn {
+        .traffic-btn, .quality-btn, .style-btn, .audio-btn {
             padding: 10px 14px;
             border: 1px solid var(--tesla-light-gray);
             background: var(--tesla-gray);
@@ -647,7 +647,13 @@
             color: white;
             border-color: #ff9800;
         }
-        .traffic-btn[data-traffic="off"].active {
+        .audio-btn.active {
+            background: var(--tesla-blue);
+            color: white;
+            border-color: var(--tesla-blue);
+        }
+        .traffic-btn[data-traffic="off"].active,
+        .audio-btn[data-audio="off"].active {
             background: var(--tesla-blue);
             color: white;
             border-color: var(--tesla-blue);
@@ -1283,6 +1289,14 @@
                     <span class="traffic-live" id="trafficLive">live</span>
                 </div>
             </div>
+
+            <div class="traffic-toggle">
+                <span class="traffic-label">🔊 Audio:</span>
+                <div class="traffic-buttons">
+                    <button type="button" class="audio-btn" data-audio="off" id="audioOffBtn">Off</button>
+                    <button type="button" class="audio-btn active" data-audio="on" id="audioOnBtn">On</button>
+                </div>
+            </div>
             
             <div class="action-row">
                 <button id="goBtn" class="btn-search">🔍 Search</button>
@@ -1472,6 +1486,16 @@
                 this._inCanada = false;
                 this.instructions = [];
                 this.currentInstruction = 0;
+                this.audioEnabled = true;
+                this._audioCtx = null;
+                this._audioUnlocked = false;
+                this._audioSpoken = {};
+                this._audioLastKey = null;
+                this._arrivedAnnounced = false;
+                try {
+                    const savedAudio = localStorage.getItem('tesla_nav_audio');
+                    if (savedAudio === '0') this.audioEnabled = false;
+                } catch (_) {}
                 
                 // Compass / heading
                 this.heading = 0;
@@ -3698,6 +3722,8 @@
                 this.lastRerouteAt = Date.now();
                 this.offRouteHits = 0;
                 this.notify('🔄 Off route — recalculating…', 'info');
+                this.playNavChime('alert');
+                this.speakNav('Recalculating route');
                 
                 try {
                     await this.createRoute(this.currentPos, this.destinationPos, { silent: true, keepNavigating: true });
@@ -3865,6 +3891,11 @@
                 this.updateDriveProgress();
                 
                 if (distance < 0.05 && !this.simulating) {
+                    if (!this._arrivedAnnounced) {
+                        this._arrivedAnnounced = true;
+                        this.playNavChime('arrive');
+                        this.speakNav('You have arrived');
+                    }
                     this.notify('🎯 You have arrived!', 'success');
                     setTimeout(() => {
                         if (this.simulating) return;
@@ -3961,27 +3992,219 @@
                 }
             }
             
-            updateTurnInstruction(remainingDist) {
-                if (!this.instructions || this.instructions.length === 0) {
-                    document.getElementById('turnText').textContent = 'Continue on route';
-                    document.getElementById('turnDistance').textContent = remainingDist < 1 ? 
-                        Math.round(remainingDist * 1000) + ' m' : remainingDist.toFixed(1) + ' km';
+            formatNavDistance(meters) {
+                if (meters == null || isNaN(meters)) return '--';
+                if (meters < 1000) return Math.max(0, Math.round(meters)) + ' m';
+                return (meters / 1000).toFixed(meters < 10000 ? 1 : 0) + ' km';
+            }
+
+            metersBetweenRouteIndexes(fromIdx, toIdx) {
+                const coords = this.routeCoords;
+                if (!coords || coords.length < 2) return 0;
+                const a = Math.max(0, Math.min(fromIdx, coords.length - 1));
+                const b = Math.max(0, Math.min(toIdx, coords.length - 1));
+                if (b <= a) return 0;
+                let m = 0;
+                for (let i = a; i < b; i++) {
+                    m += this.calculateDistance(coords[i], coords[i + 1]) * 1000;
+                }
+                return m;
+            }
+
+            syncCurrentInstruction() {
+                if (!this.instructions || !this.instructions.length || !this.routeCoords) return null;
+                const idx = this.routeProgressIndex || 0;
+                let next = this.instructions.length - 1;
+                for (let i = 0; i < this.instructions.length; i++) {
+                    const stepIdx = this.instructions[i].index != null
+                        ? this.instructions[i].index
+                        : i;
+                    if (stepIdx > idx + 1) {
+                        next = i;
+                        break;
+                    }
+                }
+                if (next !== this.currentInstruction) {
+                    this.currentInstruction = next;
+                    this._audioLastKey = null;
+                }
+                return this.instructions[this.currentInstruction] || null;
+            }
+
+            distanceToNextManeuverM() {
+                const step = this.syncCurrentInstruction();
+                if (!step || !this.routeCoords || this.routeCoords.length < 2) return null;
+                const toIdx = step.index != null ? step.index : this.routeCoords.length - 1;
+                return this.metersBetweenRouteIndexes(this.routeProgressIndex || 0, toIdx);
+            }
+
+            unlockAudio() {
+                if (this._audioUnlocked && this._audioCtx && this._audioCtx.state !== 'closed') {
+                    if (this._audioCtx.state === 'suspended') this._audioCtx.resume().catch(() => {});
                     return;
                 }
-                
-                const nextInstruction = this.instructions[this.currentInstruction];
-                if (!nextInstruction) return;
-                
-                const distToTurn = remainingDist;
-                
-                document.getElementById('turnDistance').textContent = 
-                    distToTurn < 1 ? Math.round(distToTurn * 1000) + ' m' : distToTurn.toFixed(1) + ' km';
-                
-                document.getElementById('turnText').textContent = nextInstruction.text || 'Continue';
-                document.getElementById('turnStreet').textContent = nextInstruction.street || '';
-                
-                const type = nextInstruction.type || 'Straight';
-                document.getElementById('turnIcon').textContent = this.getTurnIcon(type);
+                try {
+                    const AC = window.AudioContext || window.webkitAudioContext;
+                    if (AC) {
+                        if (!this._audioCtx || this._audioCtx.state === 'closed') {
+                            this._audioCtx = new AC();
+                        }
+                        if (this._audioCtx.state === 'suspended') {
+                            this._audioCtx.resume().catch(() => {});
+                        }
+                    }
+                } catch (_) {}
+                try {
+                    if (window.speechSynthesis) {
+                        window.speechSynthesis.cancel();
+                        // Prime voices on some mobile browsers
+                        window.speechSynthesis.getVoices();
+                    }
+                } catch (_) {}
+                this._audioUnlocked = true;
+            }
+
+            setAudioEnabled(on) {
+                this.audioEnabled = !!on;
+                try { localStorage.setItem('tesla_nav_audio', on ? '1' : '0'); } catch (_) {}
+                document.querySelectorAll('.audio-btn').forEach((b) => {
+                    b.classList.toggle('active', (b.dataset.audio === 'on') === !!on);
+                });
+                if (on) {
+                    this.unlockAudio();
+                    this.playNavChime('enable');
+                    this.speakNav('Audio guidance on', { force: true });
+                } else {
+                    this.stopNavSpeech();
+                    this.notify('Audio off', 'info');
+                }
+            }
+
+            stopNavSpeech() {
+                try {
+                    if (window.speechSynthesis) window.speechSynthesis.cancel();
+                } catch (_) {}
+            }
+
+            playNavChime(kind) {
+                if (!this.audioEnabled) return;
+                this.unlockAudio();
+                const ctx = this._audioCtx;
+                if (!ctx) return;
+                const now = ctx.currentTime;
+                const tones = {
+                    enable: [[880, 0.06], [1174, 0.08]],
+                    turn: [[740, 0.07], [988, 0.1]],
+                    near: [[988, 0.05], [1318, 0.08], [1568, 0.1]],
+                    arrive: [[659, 0.08], [880, 0.1], [1174, 0.14]],
+                    alert: [[520, 0.12], [420, 0.14]]
+                };
+                const seq = tones[kind] || tones.turn;
+                let t = now;
+                seq.forEach(([freq, dur]) => {
+                    try {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.value = freq;
+                        gain.gain.setValueAtTime(0.0001, t);
+                        gain.gain.exponentialRampToValueAtTime(0.12, t + 0.015);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start(t);
+                        osc.stop(t + dur + 0.02);
+                    } catch (_) {}
+                    t += dur + 0.03;
+                });
+            }
+
+            speakNav(text, opts) {
+                if (!this.audioEnabled && !(opts && opts.force)) return;
+                if (!text || !window.speechSynthesis) return;
+                this.unlockAudio();
+                try {
+                    window.speechSynthesis.cancel();
+                    const u = new SpeechSynthesisUtterance(String(text));
+                    u.lang = 'en-US';
+                    u.rate = 1.05;
+                    u.pitch = 1;
+                    u.volume = 1;
+                    const voices = window.speechSynthesis.getVoices() || [];
+                    const en = voices.find((v) => /en(-|_)US/i.test(v.lang))
+                        || voices.find((v) => /^en/i.test(v.lang));
+                    if (en) u.voice = en;
+                    window.speechSynthesis.speak(u);
+                } catch (_) {}
+            }
+
+            announceGuidance(step, distM) {
+                if (!this.audioEnabled || !this.isNavigating || !step) return;
+                const type = String(step.type || '');
+                const isArrive = /DestinationReached|Arrive/i.test(type)
+                    || /arriv/i.test(step.text || '');
+                const isStraight = /Straight|Continue/i.test(type)
+                    && !/turn|left|right|uturn|exit|roundabout/i.test(step.text || '');
+
+                let band = null;
+                if (isArrive || (distM != null && distM < 40)) band = 'arrive';
+                else if (distM != null && distM <= 120) band = 'near';
+                else if (distM != null && distM <= 350) band = 'mid';
+                else if (distM != null && distM <= 900) band = 'far';
+                else return;
+
+                if (isStraight && band !== 'arrive') return;
+
+                const key = (step.index != null ? step.index : this.currentInstruction) + ':' + band;
+                if (this._audioSpoken[key]) return;
+                this._audioSpoken[key] = true;
+                this._audioLastKey = key;
+
+                const phrase = this.guidancePhrase(step, distM, band);
+                if (band === 'arrive') {
+                    this.playNavChime('arrive');
+                    this.speakNav(phrase || 'You have arrived');
+                } else if (band === 'near') {
+                    this.playNavChime('near');
+                    this.speakNav(phrase);
+                } else if (band === 'mid') {
+                    this.playNavChime('turn');
+                    this.speakNav(phrase);
+                } else {
+                    this.speakNav(phrase);
+                }
+            }
+
+            guidancePhrase(step, distM, band) {
+                const text = (step.text || '').replace(/\s+/g, ' ').trim();
+                if (!text) return null;
+                if (band === 'arrive') return 'You have arrived';
+                if (band === 'near') return text;
+                const dist = this.formatNavDistance(distM);
+                if (/^in\s/i.test(text)) return text;
+                return 'In ' + dist + ', ' + text.charAt(0).toLowerCase() + text.slice(1);
+            }
+
+            updateTurnInstruction(remainingDistKm) {
+                const step = this.syncCurrentInstruction();
+                const distToTurnM = this.distanceToNextManeuverM();
+                const fallbackM = remainingDistKm != null ? remainingDistKm * 1000 : null;
+                const meters = distToTurnM != null ? distToTurnM : fallbackM;
+
+                if (!step) {
+                    document.getElementById('turnText').textContent = 'Continue on route';
+                    document.getElementById('turnDistance').textContent = this.formatNavDistance(meters);
+                    document.getElementById('turnStreet').textContent = '';
+                    document.getElementById('turnIcon').textContent = '↑';
+                    return;
+                }
+
+                document.getElementById('turnDistance').textContent = this.formatNavDistance(meters);
+                document.getElementById('turnText').textContent = step.text || 'Continue';
+                document.getElementById('turnStreet').textContent = step.road || step.street || '';
+                document.getElementById('turnIcon').textContent = this.getTurnIcon(step.type || 'Straight');
+
+                if (this.isNavigating) this.announceGuidance(step, meters);
             }
             
             getTurnIcon(type) {
@@ -4043,6 +4266,16 @@
                 document.querySelectorAll('.traffic-btn').forEach(btn => {
                     btn.onclick = () => this.setYandexTraffic(btn.dataset.traffic === 'yandex');
                 });
+
+                document.querySelectorAll('.audio-btn').forEach((btn) => {
+                    btn.onclick = () => this.setAudioEnabled(btn.dataset.audio === 'on');
+                });
+                document.querySelectorAll('.audio-btn').forEach((b) => {
+                    b.classList.toggle('active', (b.dataset.audio === 'on') === !!this.audioEnabled);
+                });
+                if (window.speechSynthesis) {
+                    window.speechSynthesis.onvoiceschanged = () => {};
+                }
                 
                 document.getElementById('goBtn').onclick = () => this.calculateRoute();
                 
@@ -4786,6 +5019,8 @@
                         this.currentRoute = route;
                         this.instructions = route.instructions || [];
                         this.currentInstruction = 0;
+                        this._audioSpoken = {};
+                        this._audioLastKey = null;
                         
                         this.routeCoords = (route.coordinates || []).map(c => [c.lat, c.lng]);
                         this._routeTotalM = this.routeLengthMeters();
@@ -4866,6 +5101,11 @@
                 this._progressTargetPct = 0;
                 this._progressTargetLeftM = null;
                 this._progressLabelAt = 0;
+                this._audioSpoken = {};
+                this._audioLastKey = null;
+                this._arrivedAnnounced = false;
+                this.currentInstruction = 0;
+                this.unlockAudio();
                 document.body.classList.add('driving');
                 
                 document.getElementById('navBar').classList.remove('hidden');
@@ -4893,6 +5133,8 @@
                 
                 this.updateNavigationInfo();
                 this.updateDriveProgress();
+                this.playNavChime('enable');
+                this.speakNav('Navigation started');
                 this.notify('🧭 Looking straight along your route', 'success');
             }
             
@@ -4902,6 +5144,7 @@
                 this.isNavigating = false;
                 this.isRerouting = false;
                 this.offRouteHits = 0;
+                this.stopNavSpeech();
                 clearTimeout(this._driveViewTimer);
                 clearTimeout(this._driveViewTimer2);
                 document.body.classList.remove('driving');
